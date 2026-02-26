@@ -35,7 +35,7 @@ export class BatchExecutor<T> {
                 .where({ id: jobRow.id })
                 .update({
                     current_id: lastId,
-                    processed_rows: freshJob.processed_rows + records.length,
+                    processed_rows: Number(freshJob.processed_rows) + records.length,
                     updated_at: new Date()
                 });
 
