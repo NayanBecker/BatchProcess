@@ -1,14 +1,25 @@
 {
-  "name": "processamento_em_lote",
+  "name": "processamento-em-lote-monorepo",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema de processamento em lote com monitoramento Backstage",
   "license": "ISC",
-  "author": "nyn",
-  "type": "commonjs",
-  "main": "index.js",
+  "author": "nayanbecker",
+  "private": true,
+  "workspaces": [
+    "backstage/packages/*",
+    "backstage/app"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node src/cli/index.ts"
+    "dev": "ts-node src/cli/index.ts",
+    "build": "tsc",
+    "migrate": "knex migrate:latest --knexfile src/db/knexfile.ts",
+    "migrate:rollback": "knex migrate:rollback --knexfile src/db/knexfile.ts",
+    "backstage:install": "npm install && cd backstage && npm install && cd packages/plugin-batch-monitor && npm install && cd ../app && npm install",
+    "backstage:build": "cd backstage/packages/plugin-batch-monitor && npm run build && cd ../..",
+    "backstage:start": "npm run backstage:build && cd backstage/app && npm start",
+    "backstage:dev": "npm run backstage:build && cd backstage/app && npm start",
+    "backstage:clean": "cd backstage/packages/plugin-batch-monitor && npm run clean && cd ../app && npm run clean"
   },
   "dependencies": {
     "knex": "^3.1.0",
