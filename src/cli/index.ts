@@ -16,10 +16,16 @@
  */
 
 import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { register, listRegistered, has as jobHas } from '../core/JobRegistry.ts';
+import { JobManager } from '../core/JobManager.ts';
 
 const [, , command, arg] = process.argv;
 
-const API_URL = process.env.API_URL || 'http://localhost:3000';
+// If API_URL is provided the CLI will act as API client; otherwise it runs locally
+const API_URL = process.env.API_URL;
+const useApi = !!API_URL;
 
 async function main() {
     try {
@@ -105,70 +111,137 @@ Exemplos:
 // FUNÇÕES DA CLI
 // =====================
 
+async function readBody(response: any): Promise<any> {
+    const text = await response.text();
+    try {
+        return JSON.parse(text);
+    } catch (err) {
+        throw new Error(`Resposta inválida do servidor (status ${response.status}). Corpo:\n${text}`);
+    }
+}
+
 async function createJob(jobName: string): Promise<void> {
-    console.log(`🚀 Criando job "${jobName}"...`);
+    if (useApi) {
+        console.log(`🚀 Criando job "${jobName}" via API...`);
 
-    const response = await fetch(`${API_URL}/api/batch/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_name: jobName })
-    });
+        const response = await fetch(`${API_URL}/api/batch/jobs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_name: jobName })
+        });
 
-    const data = await response.json();
+        const data = await readBody(response);
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao criar job');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao criar job');
+        }
+
+        console.log(`✅ Job criado com sucesso!`);
+        console.log(`   ID: ${data.data.id}`);
+        console.log(`   Status: ${data.data.status}`);
+        console.log(`   Dashboard: ${API_URL}/`);
+        return;
     }
 
+    // Local mode
+    console.log(`🚀 Criando job "${jobName}" localmente...`);
+    await loadJobs();
+
+    const manager = getOrCreateManager();
+    // Garantir que o JobManager está rodando para dispatch
+    if (!manager.getIsRunning()) {
+        await manager.start();
+    }
+
+    const dto = await manager.startJob(jobName, { immediate: true });
+
     console.log(`✅ Job criado com sucesso!`);
-    console.log(`   ID: ${data.data.id}`);
-    console.log(`   Status: ${data.data.status}`);
-    console.log(`   Dashboard: http://localhost:3000/`);
+    console.log(`   ID: ${dto.id}`);
+    console.log(`   Status: ${dto.status}`);
+    console.log('   Processamento iniciado localmente. Veja logs no console.');
 }
 
 async function pauseJob(jobId: number): Promise<void> {
-    console.log(`⏸️  Pausando job ${jobId}...`);
+    if (useApi) {
+        console.log(`⏸️  Pausando job ${jobId} via API...`);
 
-    const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}/pause`, {
-        method: 'POST'
-    });
+        const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}/pause`, {
+            method: 'POST'
+        });
 
-    const data = await response.json();
+        const data = await readBody(response);
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao pausar job');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao pausar job');
+        }
+
+        console.log(`✅ Job ${jobId} pausado com sucesso!`);
+        return;
     }
 
-    console.log(`✅ Job ${jobId} pausado com sucesso!`);
+    console.log(`⏸️  Pausando job ${jobId} localmente...`);
+    const manager = getOrCreateManager();
+    const dto = await manager.pauseJob(jobId);
+    console.log(`✅ Job ${jobId} pausado (status=${dto.status})`);
 }
 
 async function resumeJob(jobId: number): Promise<void> {
-    console.log(`▶️  Retomando job ${jobId}...`);
+    if (useApi) {
+        console.log(`▶️  Retomando job ${jobId} via API...`);
 
-    const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}/resume`, {
-        method: 'POST'
-    });
+        const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}/resume`, {
+            method: 'POST'
+        });
 
-    const data = await response.json();
+        const data = await readBody(response);
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao retomar job');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao retomar job');
+        }
+
+        console.log(`✅ Job ${jobId} retomado com sucesso!`);
+        return;
     }
 
-    console.log(`✅ Job ${jobId} retomado com sucesso!`);
+    console.log(`▶️  Retomando job ${jobId} localmente...`);
+    const manager = getOrCreateManager();
+    const dto = await manager.resumeJob(jobId);
+    console.log(`✅ Job ${jobId} retomado (status=${dto.status})`);
 }
 
 async function listJobs(): Promise<void> {
-    console.log('📋 Listando jobs...\n');
+    if (useApi) {
+        console.log('📋 Listando jobs via API...\n');
 
-    const response = await fetch(`${API_URL}/api/batch/jobs?limit=50`);
-    const data = await response.json();
+        const response = await fetch(`${API_URL}/api/batch/jobs?limit=50`);
+        const data = await readBody(response);
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao listar jobs');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao listar jobs');
+        }
+
+        const jobs = data.data.jobs;
+
+        if (jobs.length === 0) {
+            console.log('Nenhum job encontrado.');
+            return;
+        }
+
+        console.table(jobs.map((j: any) => ({
+            ID: j.id,
+            Nome: j.job_name,
+            Status: j.status,
+            Processados: j.metrics.itemsProcessed,
+            Erros: j.error_count,
+            Criado: new Date(j.created_at).toLocaleString()
+        })));
+        return;
     }
 
-    const jobs = data.data.jobs;
+    console.log('📋 Listando jobs locais...\n');
+    const manager = getOrCreateManager();
+    const result = await manager.listJobs({ limit: 50 });
+    const jobs = result.jobs;
 
     if (jobs.length === 0) {
         console.log('Nenhum job encontrado.');
@@ -186,32 +259,61 @@ async function listJobs(): Promise<void> {
 }
 
 async function getStatus(jobId: number): Promise<void> {
-    console.log(`🔍 Status do job ${jobId}:\n`);
+    if (useApi) {
+        console.log(`🔍 Status do job ${jobId} via API:\n`);
 
-    const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}`);
-    const data = await response.json();
+        const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}`);
+        const data = await readBody(response);
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao obter status');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao obter status');
+        }
+
+        const job = data.data;
+        console.log(JSON.stringify(job, null, 2));
+        return;
     }
 
-    const job = data.data;
+    console.log(`🔍 Status do job ${jobId} localmente:\n`);
+    const manager = getOrCreateManager();
+    const job = await manager.getJobStatus(jobId);
+    if (!job) {
+        console.log('Job não encontrado.');
+        return;
+    }
     console.log(JSON.stringify(job, null, 2));
 }
 
 async function getLogs(jobId: number): Promise<void> {
-    console.log(`📜 Logs do job ${jobId}:\n`);
+    if (useApi) {
+        console.log(`📜 Logs do job ${jobId} via API:\n`);
 
-    const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}/logs?limit=50`);
-    const data = await response.json();
+        const response = await fetch(`${API_URL}/api/batch/jobs/${jobId}/logs?limit=50`);
+        const data = await readBody(response);
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao obter logs');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao obter logs');
+        }
+
+        const logs = data.data;
+
+        if (logs.length === 0) {
+            console.log('Nenhum log encontrado.');
+            return;
+        }
+
+        logs.forEach((log: any) => {
+            const date = new Date(log.created_at).toLocaleString();
+            console.log(`[${date}] [${log.level.toUpperCase()}] ${log.message}`);
+        });
+        return;
     }
 
-    const logs = data.data;
+    console.log(`📜 Logs do job ${jobId} localmente:\n`);
+    const manager = getOrCreateManager();
+    const logs = await manager.getJobLogs(jobId, { page: 1, limit: 50 });
 
-    if (logs.length === 0) {
+    if (!logs || logs.length === 0) {
         console.log('Nenhum log encontrado.');
         return;
     }
@@ -225,24 +327,85 @@ async function getLogs(jobId: number): Promise<void> {
 async function listAvailableJobs(): Promise<void> {
     console.log('📦 Jobs disponíveis no registry:\n');
 
-    const response = await fetch(`${API_URL}/api/batch/jobs/available/list`);
-    const data = await response.json();
+    if (useApi) {
+        const response = await fetch(`${API_URL}/api/batch/jobs/available/list`);
+        const data = await response.json();
 
-    if (!response.ok) {
-        throw new Error(data.error || 'Falha ao listar jobs disponíveis');
+        if (!response.ok) {
+            throw new Error(data.error || 'Falha ao listar jobs disponíveis');
+        }
+
+        const jobs = data.data;
+
+        if (jobs.length === 0) {
+            console.log('Nenhum job registrado.');
+            return;
+        }
+
+        jobs.forEach((j: any) => {
+            console.log(`  • ${j.name}${j.description ? ` - ${j.description}` : ''}`);
+        });
+        return;
     }
 
-    const jobs = data.data;
-
+    // Local registry
+    await loadJobs();
+    const jobs = listRegistered();
     if (jobs.length === 0) {
         console.log('Nenhum job registrado.');
         return;
     }
 
     jobs.forEach((j: any) => {
-        console.log(`  • ${j.name}${j.description ? ` - ${j.description}` : ''}`);
+        console.log(`  • ${j.name}${j.metadata?.description ? ` - ${j.metadata.description}` : ''}`);
     });
 }
 
-// Executar
+/**
+ * Carrega todos os arquivos em src/jobs e registra as classes exportadas
+ */
+function loadJobs(): void {
+    const jobsDir = path.join(__dirname, '..', 'jobs');
+    if (!fs.existsSync(jobsDir)) return;
+
+    const allFiles = fs.readdirSync(jobsDir);
+    console.log(`[CLI] jobs dir: ${jobsDir} -> found files: ${allFiles.join(', ')}`);
+    const tsFiles = allFiles.filter(f => f.endsWith('.ts'));
+    const jsFiles = allFiles.filter(f => f.endsWith('.js'));
+    const files = tsFiles.length > 0 ? tsFiles : jsFiles;
+    console.log(`[CLI] jobs to load: ${files.join(', ')}`);
+    for (const file of files) {
+        const full = path.join(jobsDir, file);
+        try {
+            const mod = require(full);
+            for (const key of Object.keys(mod)) {
+                const exported = mod[key];
+                if (typeof exported === 'function') {
+                    const jobName = exported.name || key;
+                    try {
+                        // Use the core JobRegistry module resolution (no extension)
+                        const registryModule = require(path.join(__dirname, '..', 'core', 'JobRegistry'));
+                        if (!registryModule.has(jobName)) {
+                            registryModule.register(jobName, exported, { className: exported.name });
+                            console.log(`[CLI] Registrado job ${jobName} (arquivo: ${file})`);
+                        }
+                    } catch (err) {
+                        console.error(`[CLI] erro ao registrar job ${jobName}:`, err);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error(`[CLI] falha ao carregar job ${file}:`, err);
+        }
+    }
+}
+
+function getOrCreateManager(): JobManager {
+    try {
+        return JobManager.getInstance();
+    } catch (err) {
+        return JobManager.getInstance({ maxConcurrentJobs: Number(process.env.MAX_CONCURRENT || '1') });
+    }
+}
+
 main();

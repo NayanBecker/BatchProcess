@@ -26,11 +26,11 @@ const knexConfig: Knex.Config = {
     },
     migrations: {
         tableName: 'knex_migrations',
-        directory: './src/db/migrations',
+        directory: './migrations',
         extension: 'ts'
     },
     seeds: {
-        directory: './src/db/seeds'
+        directory: './seeds'
     }
 };
 
