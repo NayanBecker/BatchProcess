@@ -1,60 +1,34 @@
-// Update with your config settings.
-
-// When running the Knex CLI, migrations in this project are written in
-// TypeScript. Register `ts-node` so the CLI can require `.ts` files.
-try {
-  require('ts-node/register');
-} catch (e) {
-  // ts-node not installed; users should compile migrations to JS first.
-}
-
-/**
- * @type { Object.<string, import("knex").Knex.Config> }
- */
-module.exports = {
-
-  development: {
-    client: 'postgresql',
-    connection: {
-      host: '127.0.0.1',
-      user: 'postgres',
-      password: 'postgres',
-      database: 'postgres',
-      port: 5432,
-    },
-    pool: { min: 2, max: 10 }
-  },
-
-  staging: {
-    client: 'postgresql',
-    connection: {
-      database: 'my_db',
-      user: 'username',
-      password: 'password'
-    },
-    pool: {
-      min: 2,
-      max: 10
-    },
-    migrations: {
-      tableName: 'knex_migrations'
-    }
-  },
-
-  production: {
-    client: 'postgresql',
-    connection: {
-      database: 'my_db',
-      user: 'username',
-      password: 'password'
-    },
-    pool: {
-      min: 2,
-      max: 10
-    },
-    migrations: {
-      tableName: 'knex_migrations'
-    }
-  }
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const config = {
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || 'postgres',
+    poolMin: parseInt(process.env.DB_POOL_MIN || '2'),
+    poolMax: parseInt(process.env.DB_POOL_MAX || '10')
 };
+const knexConfig = {
+    client: 'pg',
+    connection: {
+        host: config.host,
+        port: config.port,
+        user: config.user,
+        password: config.password,
+        database: config.database
+    },
+    pool: {
+        min: config.poolMin,
+        max: config.poolMax
+    },
+    migrations: {
+        tableName: 'knex_migrations',
+        directory: './migrations',
+        extension: 'ts'
+    },
+    seeds: {
+        directory: './seeds'
+    }
+};
+exports.default = knexConfig;

@@ -5,6 +5,7 @@
     "moduleResolution": "node16",
     "strict": false,
     "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true
   }
 }

@@ -6,6 +6,18 @@ Documentação completa do sistema de processamento em lote (batch processing) d
 
 ---
 
+## 📋 Visão Geral (rotina atualizada)
+
+Este documento descreve a rotina atual da aplicação após a introdução do modo "local-first" para execução de jobs. A CLI agora pode operar em dois modos:
+
+- **Modo local (padrão)**: quando a variável de ambiente `API_URL` não está definida, a CLI carrega as definições de jobs em `src/jobs`, registra-as no `JobRegistry` e executa os jobs localmente usando o `JobManager` e o `BatchExecutor` (conexão direta com o banco).
+- **Modo API (remoto)**: quando `API_URL` está definida, a CLI age como cliente da API remota e usa os endpoints da API para criar/pausar/retomar jobs.
+
+Esta versão consolidou a execução local como comportamento padrão e remove dependências de invocação por `child_process` entre componentes que eram usadas anteriormente.
+
+---
+
+
 ## ✅ Objetivos Alcançados (Itens A-C)
 
 ### **Item A: Arquitetura Assíncrona e Incremental**
@@ -58,22 +70,27 @@ while (true) {
 ```
 
 **Comandos da CLI (src/cli/index.ts):**
+
 ```bash
-# Iniciar novo job
-npm run dev start <job_name>
+# Instalar dependências
+npm install
 
-# Pausar job em execução
+# Rodar migrations
+npx knex migrate:latest
+
+# Iniciar job localmente (modo padrão)
+npm run dev start NormalizeUserEmailsJob
+
+# Pausar / retomar
 npm run dev pause <job_id>
-
-# Retomar job pausado
 npm run dev resume <job_id>
+
+# Listar jobs definidos
+npm run dev jobs
+
+# Ver status de um job
+npm run dev status <job_id>
 ```
-
-**Desacoplamento alcançado:**
-- CLI apenas cria/controla jobs na tabela
-- BatchExecutor lê da tabela e executa independentemente
-- Múltiplos consumers poderiam ler a mesma fila (设计中)
-
 ---
 
 ### **Item C: Protótipo de Sistema de Batch**
