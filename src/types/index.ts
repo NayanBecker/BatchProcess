@@ -137,18 +137,7 @@ export interface JobEvent<T = any> {
 }
 
 /**
- * DTO para criação de job via API
- */
-export interface CreateJobDTO {
-    job_name: string;
-    config?: Partial<JobConfig>;
-    scheduled_at?: Date | string;
-    tags?: string[];
-    priority?: number;
-}
-
-/**
- * DTO para resposta de job da API
+ * DTO de job para uso interno e na CLI
  */
 export interface JobDTO {
     id: number;
@@ -193,14 +182,3 @@ export interface DatabaseConfig {
     poolMax?: number;
 }
 
-/**
- * Configuração do framework
- */
-export interface FrameworkConfig {
-    database: DatabaseConfig;
-    maxConcurrentJobs: number;
-    defaultJobConfig: Partial<JobConfig>;
-    enableMetrics: boolean;
-    metricsPort?: number;
-    apiPort: number;
-}

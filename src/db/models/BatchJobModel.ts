@@ -281,7 +281,7 @@ export class BatchJobModel {
     }
 
     /**
-     * Converte row para DTO (para API)
+     * Converte row para DTO
      */
     static toDTO(row: BatchJobRow): JobDTO {
         // Calcular métricas básicas
