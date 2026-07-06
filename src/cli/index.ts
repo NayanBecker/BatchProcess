@@ -15,7 +15,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { listRegistered } from '../core/JobRegistry.ts';
+import * as JobRegistry from '../core/JobRegistry.ts';
 import { JobManager } from '../core/JobManager.ts';
 
 const [, , command, arg] = process.argv;
@@ -186,7 +186,7 @@ async function listAvailableJobs(): Promise<void> {
 
     // Local registry
     await loadJobs();
-    const jobs = listRegistered();
+    const jobs = JobRegistry.listRegistered();
     if (jobs.length === 0) {
         console.log('Nenhum job registrado.');
         return;
@@ -219,10 +219,8 @@ function loadJobs(): void {
                 if (typeof exported === 'function') {
                     const jobName = exported.name || key;
                     try {
-                        // Use the core JobRegistry module resolution (no extension)
-                        const registryModule = require(path.join(__dirname, '..', 'core', 'JobRegistry'));
-                        if (!registryModule.has(jobName)) {
-                            registryModule.register(jobName, exported, { className: exported.name });
+                        if (!JobRegistry.has(jobName)) {
+                            JobRegistry.register(jobName, exported, { className: exported.name });
                             console.log(`[CLI] Registrado job ${jobName} (arquivo: ${file})`);
                         }
                     } catch (err) {
