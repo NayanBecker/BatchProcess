@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.JobManager = void 0;
 const events_1 = require("events");
 const models_1 = require("../db/models");
-const models_2 = require("../db/models");
+const conection_1 = require("../db/conection");
 const BatchExecutor_1 = require("./BatchExecutor");
 const JobRegistry_1 = require("./JobRegistry");
 /**
@@ -57,7 +57,8 @@ class JobManager extends events_1.EventEmitter {
         }, this.config.pollIntervalMs);
         // disparar primeira busca imediatamente
         await this.pollAndDispatch();
-        await models_2.BatchJobLogModel.create(0, 'info', 'JobManager iniciado');
+        // Não criar log com job_id=0 (violaria FK). Registrar localmente apenas.
+        console.log('[JobManager] iniciado');
     }
     /**
      * Para o JobManager (cancela todos os jobs em execução)
@@ -108,7 +109,7 @@ class JobManager extends events_1.EventEmitter {
         // Emitir evento
         this.emitEvent({
             type: 'job:queued',
-            jobId: jobRow.id,
+            jobId: Number(jobRow.id),
             jobName: jobRow.job_name,
             timestamp: new Date(),
             data: jobDTO
@@ -203,10 +204,10 @@ class JobManager extends events_1.EventEmitter {
             status: filters?.status,
             job_name: filters?.job_name
         }, { page, limit });
-        const total = await db('batch_jobs')
+        const total = await (0, conection_1.db)('batch_jobs')
             .count('id as count')
             .first()
-            .then(r => parseInt(r.count));
+            .then(r => Number(r?.count ?? 0));
         return {
             jobs: jobs.map(job => models_1.BatchJobModel.toDTO(job)),
             total
@@ -216,14 +217,14 @@ class JobManager extends events_1.EventEmitter {
      * Busca logs de um job
      */
     async getJobLogs(jobId, pagination) {
-        const logs = await models_2.BatchJobLogModel.findByJobId(jobId, pagination);
+        const logs = await models_1.BatchJobLogModel.findByJobId(jobId, pagination);
         return logs;
     }
     /**
      * Busca erros de um job
      */
     async getJobErrors(jobId, pagination) {
-        const errors = await BatchJobErrorModel.findByJobId(jobId, pagination);
+        const errors = await models_1.BatchJobErrorModel.findByJobId(jobId, pagination);
         return errors;
     }
     /**
@@ -242,13 +243,13 @@ class JobManager extends events_1.EventEmitter {
                 return sum + (end - start);
             }, 0) / recentJobs.length
             : 0;
-        const totalItems = await db('batch_jobs')
+        const totalItems = await (0, conection_1.db)('batch_jobs')
             .sum('processed_rows as total')
             .first()
             .then(r => r.total || 0);
-        const totalErrors = await db('batch_job_errors').count('id as count')
+        const totalErrors = await (0, conection_1.db)('batch_job_errors').count('id as count')
             .first()
-            .then(r => r.count || 0);
+            .then(r => Number(r?.count ?? 0));
         return {
             totalJobs: Object.values(jobsByStatus).reduce((a, b) => a + b, 0),
             jobsByStatus,
@@ -285,13 +286,13 @@ class JobManager extends events_1.EventEmitter {
      */
     async dispatchJob(jobRow, workerId) {
         // Verificar se job está registrado
-        const jobClass = JobRegistry_1.JobRegistry.create(jobRow.job_name, {
+        const jobClass = (0, JobRegistry_1.create)(jobRow.job_name, {
             batchSize: jobRow.batch_size,
             throttleMs: jobRow.throttle_ms
         });
         if (!jobClass) {
             console.error(`[JobManager] Job "${jobRow.job_name}" não encontrado no registry`);
-            await models_1.BatchJobModel.fail(jobRow.id);
+            await models_1.BatchJobModel.fail(Number(jobRow.id));
             return;
         }
         const executor = new BatchExecutor_1.BatchExecutor(workerId);
@@ -335,7 +336,7 @@ class JobManager extends events_1.EventEmitter {
             this.workerExecutors.delete(workerId);
         });
         // Guardar referências
-        this.executors.set(jobRow.id, executor);
+        this.executors.set(Number(jobRow.id), executor);
         this.workerExecutors.set(workerId, executor);
         // Executar job em background (não await)
         executor.run(jobRow, jobClass).catch(err => {
@@ -343,11 +344,11 @@ class JobManager extends events_1.EventEmitter {
         });
         this.emitEvent({
             type: 'job:started',
-            jobId: jobRow.id,
+            jobId: Number(jobRow.id),
             jobName: jobRow.job_name,
             timestamp: new Date()
         });
-        await models_2.BatchJobLogModel.create(jobRow.id, 'info', `Job iniciado pelo JobManager (worker=${workerId})`);
+        await models_1.BatchJobLogModel.create(Number(jobRow.id), 'info', `Job iniciado pelo JobManager (worker=${workerId})`);
     }
     /**
      * Emite evento do sistema (compatível com listener externo)

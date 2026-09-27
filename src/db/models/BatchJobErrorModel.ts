@@ -56,7 +56,7 @@ export class BatchJobErrorModel {
             .count('id as count')
             .first();
 
-        return result ? parseInt(result.count) : 0;
+        return result ? Number(result.count ?? 0) : 0;
     }
 
     /**

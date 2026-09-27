@@ -1,5 +1,42 @@
 #!/usr/bin/env node
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * CLI do Batch Framework (modo local)
  *
@@ -13,14 +50,10 @@
  *   npm run dev logs <job_id>
  *   npm run dev status <job_id>
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const JobRegistry_1 = require("../core/JobRegistry");
-const JobManager_1 = require("../core/JobManager");
+const JobRegistry = __importStar(require("../core/JobRegistry.js"));
+const JobManager_js_1 = require("../core/JobManager.js");
 const [, , command, arg] = process.argv;
 async function main() {
     try {
@@ -96,9 +129,8 @@ Exemplos:
 // FUNÇÕES DA CLI
 // =====================
 async function createJob(jobName) {
-    // Local mode
     console.log(`🚀 Criando job "${jobName}" localmente...`);
-    await loadJobs();
+    await registerJobsFromDisk();
     const manager = getOrCreateManager();
     // Garantir que o JobManager está rodando para dispatch
     if (!manager.getIsRunning()) {
@@ -164,26 +196,41 @@ async function getLogs(jobId) {
     });
 }
 async function listAvailableJobs() {
-    console.log('📦 Jobs disponíveis no registry:\n');
-    // Local registry
-    await loadJobs();
-    const jobs = (0, JobRegistry_1.listRegistered)();
+    console.log('📦 Jobs disponíveis:\n');
+    const jobs = loadJobs();
     if (jobs.length === 0) {
-        console.log('Nenhum job registrado.');
+        console.log('Nenhum job encontrado.');
         return;
     }
-    jobs.forEach((j) => {
-        console.log(`  • ${j.name}${j.metadata?.description ? ` - ${j.metadata.description}` : ''}`);
-    });
+    console.table(jobs);
 }
 /**
- * Carrega todos os arquivos em src/jobs e registra as classes exportadas
+ * Lista os jobs disponíveis em src/jobs sem registrar nada no registry
  */
 function loadJobs() {
     const jobsDir = path_1.default.join(__dirname, '..', 'jobs');
     if (!fs_1.default.existsSync(jobsDir))
+        return [];
+    const allFiles = fs_1.default.readdirSync(jobsDir);
+    const tsFiles = allFiles.filter(f => f.endsWith('.ts'));
+    const jsFiles = allFiles.filter(f => f.endsWith('.js'));
+    const files = tsFiles.length > 0 ? tsFiles : jsFiles;
+    return files.map((file, index) => ({
+        id: index + 1,
+        job: path_1.default.parse(file).name
+    }));
+}
+/**
+ * Carrega os jobs do diretório e registra as classes exportadas no registry local
+ */
+async function registerJobsFromDisk() {
+    const jobsDir = path_1.default.join(__dirname, '..', 'jobs');
+    if (!fs_1.default.existsSync(jobsDir))
         return;
-    const files = fs_1.default.readdirSync(jobsDir).filter(f => f.endsWith('.ts') || f.endsWith('.js'));
+    const allFiles = fs_1.default.readdirSync(jobsDir);
+    const tsFiles = allFiles.filter(f => f.endsWith('.ts'));
+    const jsFiles = allFiles.filter(f => f.endsWith('.js'));
+    const files = tsFiles.length > 0 ? tsFiles : jsFiles;
     for (const file of files) {
         const full = path_1.default.join(jobsDir, file);
         try {
@@ -192,9 +239,13 @@ function loadJobs() {
                 const exported = mod[key];
                 if (typeof exported === 'function') {
                     const jobName = exported.name || key;
-                    if (!(0, JobRegistry_1.has)(jobName)) {
-                        (0, JobRegistry_1.register)(jobName, exported, { className: exported.name });
-                        console.log(`[CLI] Registrado job ${jobName} (arquivo: ${file})`);
+                    try {
+                        if (!JobRegistry.has(jobName)) {
+                            JobRegistry.register(jobName, exported, { className: exported.name });
+                        }
+                    }
+                    catch (err) {
+                        console.error(`[CLI] erro ao registrar job ${jobName}:`, err);
                     }
                 }
             }
@@ -206,10 +257,10 @@ function loadJobs() {
 }
 function getOrCreateManager() {
     try {
-        return JobManager_1.JobManager.getInstance();
+        return JobManager_js_1.JobManager.getInstance();
     }
     catch (err) {
-        return JobManager_1.JobManager.getInstance({ maxConcurrentJobs: Number(process.env.MAX_CONCURRENT || '1') });
+        return JobManager_js_1.JobManager.getInstance({ maxConcurrentJobs: Number(process.env.MAX_CONCURRENT || '1') });
     }
 }
 main();

@@ -26,9 +26,6 @@ async function down(knex) {
         table.dropColumn('priority');
         table.dropColumn('tags');
         table.dropColumn('scheduled_at');
-        table.dropColumn('started_at');
-        table.dropColumn('completed_at');
-        table.dropColumn('error_count');
         table.dropColumn('worker_id');
     });
 }

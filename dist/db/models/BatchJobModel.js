@@ -227,12 +227,12 @@ class BatchJobModel {
             failed: 0
         };
         rows.forEach(row => {
-            result[row.status] = parseInt(row.count);
+            result[row.status] = Number(row.count ?? 0);
         });
         return result;
     }
     /**
-     * Converte row para DTO (para API)
+     * Converte row para DTO
      */
     static toDTO(row) {
         // Calcular métricas básicas

@@ -4,7 +4,8 @@ import { BatchIterator } from "./BatchIterator";
 import { BatchJob } from "./BatchJob";
 import { BatchJobModel } from "../db/models";
 import { BatchJobLogModel } from "../db/models";
-import { JobEvent, JobEventType, ProcessItemContext } from "../types";
+import { JobEvent, JobEventType } from "../types";
+import type { ProcessItemContext } from "./BatchJob";
 
 /**
  * Eventos emitidos durante a execução de um job

@@ -76,7 +76,7 @@ class BatchJobLogModel {
             debug: 0
         };
         rows.forEach(row => {
-            result[row.level] = parseInt(row.count);
+            result[row.level] = Number(row.count ?? 0);
         });
         return result;
     }

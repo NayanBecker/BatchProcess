@@ -109,7 +109,7 @@ export class BatchJobLogModel {
         };
 
         rows.forEach(row => {
-            result[row.level as LogLevel] = parseInt(row.count);
+            result[row.level as LogLevel] = Number(row.count ?? 0);
         });
 
         return result;

@@ -274,7 +274,7 @@ export class BatchJobModel {
         };
 
         rows.forEach(row => {
-            result[row.status as JobStatus] = parseInt(row.count);
+            result[row.status as JobStatus] = Number(row.count ?? 0);
         });
 
         return result;

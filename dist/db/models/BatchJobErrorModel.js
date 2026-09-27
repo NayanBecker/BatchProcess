@@ -40,7 +40,7 @@ class BatchJobErrorModel {
             .where({ job_id: jobId })
             .count('id as count')
             .first();
-        return result ? parseInt(result.count) : 0;
+        return result ? Number(result.count ?? 0) : 0;
     }
     /**
      * Busca últimos erros de todos os jobs (para dashboard)

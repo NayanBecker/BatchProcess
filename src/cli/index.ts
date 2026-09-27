@@ -15,8 +15,8 @@
  */
 import fs from 'fs';
 import path from 'path';
-import * as JobRegistry from '../core/JobRegistry.ts';
-import { JobManager } from '../core/JobManager.ts';
+import * as JobRegistry from '../core/JobRegistry.js';
+import { JobManager } from '../core/JobManager.js';
 
 const [, , command, arg] = process.argv;
 
@@ -103,7 +103,7 @@ Exemplos:
 
 async function createJob(jobName: string): Promise<void> {
     console.log(`🚀 Criando job "${jobName}" localmente...`);
-    await loadJobs();
+    await registerJobsFromDisk();
 
     const manager = getOrCreateManager();
     // Garantir que o JobManager está rodando para dispatch
@@ -182,34 +182,47 @@ async function getLogs(jobId: number): Promise<void> {
 }
 
 async function listAvailableJobs(): Promise<void> {
-    console.log('📦 Jobs disponíveis no registry:\n');
+    console.log('📦 Jobs disponíveis:\n');
 
-    // Local registry
-    await loadJobs();
-    const jobs = JobRegistry.listRegistered();
+    const jobs = loadJobs();
     if (jobs.length === 0) {
-        console.log('Nenhum job registrado.');
+        console.log('Nenhum job encontrado.');
         return;
     }
 
-    jobs.forEach((j: any) => {
-        console.log(`  • ${j.name}${j.metadata?.description ? ` - ${j.metadata.description}` : ''}`);
-    });
+    console.table(jobs);
 }
 
 /**
- * Carrega todos os arquivos em src/jobs e registra as classes exportadas
+ * Lista os jobs disponíveis em src/jobs sem registrar nada no registry
  */
-function loadJobs(): void {
+function loadJobs(): Array<{ id: number; job: string }> {
+    const jobsDir = path.join(__dirname, '..', 'jobs');
+    if (!fs.existsSync(jobsDir)) return [];
+
+    const allFiles = fs.readdirSync(jobsDir);
+    const tsFiles = allFiles.filter(f => f.endsWith('.ts'));
+    const jsFiles = allFiles.filter(f => f.endsWith('.js'));
+    const files = tsFiles.length > 0 ? tsFiles : jsFiles;
+
+    return files.map((file, index) => ({
+        id: index + 1,
+        job: path.parse(file).name
+    }));
+}
+
+/**
+ * Carrega os jobs do diretório e registra as classes exportadas no registry local
+ */
+async function registerJobsFromDisk(): Promise<void> {
     const jobsDir = path.join(__dirname, '..', 'jobs');
     if (!fs.existsSync(jobsDir)) return;
 
     const allFiles = fs.readdirSync(jobsDir);
-    console.log(`[CLI] jobs dir: ${jobsDir} -> found files: ${allFiles.join(', ')}`);
     const tsFiles = allFiles.filter(f => f.endsWith('.ts'));
     const jsFiles = allFiles.filter(f => f.endsWith('.js'));
     const files = tsFiles.length > 0 ? tsFiles : jsFiles;
-    console.log(`[CLI] jobs to load: ${files.join(', ')}`);
+
     for (const file of files) {
         const full = path.join(jobsDir, file);
         try {
@@ -221,7 +234,6 @@ function loadJobs(): void {
                     try {
                         if (!JobRegistry.has(jobName)) {
                             JobRegistry.register(jobName, exported, { className: exported.name });
-                            console.log(`[CLI] Registrado job ${jobName} (arquivo: ${file})`);
                         }
                     } catch (err) {
                         console.error(`[CLI] erro ao registrar job ${jobName}:`, err);

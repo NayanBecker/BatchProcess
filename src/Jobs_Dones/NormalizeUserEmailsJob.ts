@@ -1,5 +1,5 @@
-import { BatchJob } from '../src/core/BatchJob';
-import { db } from '../src/db/conection';
+import { BatchJob } from '../core/BatchJob.js';
+import { db } from '../db/conection.js';
 
 export class NormalizeUserEmailsJob extends BatchJob<any> {
     tableName = 'users';

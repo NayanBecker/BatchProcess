@@ -3,7 +3,6 @@ import { BatchJobModel, BatchJobErrorModel, BatchJobLogModel } from '../db/model
 import { db } from '../db/conection';
 import { BatchExecutor } from './BatchExecutor';
 import { JobRegistry, create as createJobInstance } from './JobRegistry';
-import { BatchJob } from './BatchJob';
 import {
     JobStatus,
     JobEventType,
@@ -279,7 +278,7 @@ export class JobManager extends EventEmitter {
         const total = await db('batch_jobs')
             .count('id as count')
             .first()
-            .then(r => Number(r.count));
+            .then(r => Number(r?.count ?? 0));
 
         return {
             jobs: jobs.map(job => BatchJobModel.toDTO(job)),
@@ -332,7 +331,7 @@ export class JobManager extends EventEmitter {
 
         const totalErrors = await db('batch_job_errors').count('id as count')
             .first()
-            .then(r => Number(r.count || 0));
+            .then(r => Number(r?.count ?? 0));
 
         return {
             totalJobs: Object.values(jobsByStatus).reduce((a, b) => a + b, 0),
