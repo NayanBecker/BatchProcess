@@ -15,10 +15,11 @@
  */
 import fs from 'fs';
 import path from 'path';
-import * as JobRegistry from '../core/JobRegistry.js';
-import { JobManager } from '../core/JobManager.js';
+import * as JobRegistry from '../core/JobRegistry';
+import type { JobManager } from '../core/JobManager';
 
 const [, , command, arg] = process.argv;
+let database: import('knex').Knex | undefined;
 
 async function main() {
     try {
@@ -36,7 +37,7 @@ async function main() {
                     console.error('❌ Uso: npm run dev pause <job_id>');
                     process.exit(1);
                 }
-                await pauseJob(parseInt(arg));
+                await pauseJob(parseJobId(arg));
                 break;
 
             case 'resume':
@@ -44,7 +45,7 @@ async function main() {
                     console.error('❌ Uso: npm run dev resume <job_id>');
                     process.exit(1);
                 }
-                await resumeJob(parseInt(arg));
+                await resumeJob(parseJobId(arg));
                 break;
 
             case 'list':
@@ -56,7 +57,7 @@ async function main() {
                     console.error('❌ Uso: npm run dev logs <job_id>');
                     process.exit(1);
                 }
-                await getLogs(parseInt(arg));
+                await getLogs(parseJobId(arg));
                 break;
 
             case 'status':
@@ -64,7 +65,7 @@ async function main() {
                     console.error('❌ Uso: npm run dev status <job_id>');
                     process.exit(1);
                 }
-                await getStatus(parseInt(arg));
+                await getStatus(parseJobId(arg));
                 break;
 
             case 'jobs':
@@ -85,15 +86,20 @@ Comandos disponíveis:
   jobs                 Lista jobs disponíveis no registry
 
 Exemplos:
-  npm run dev start NormalizeUserEmailsJob
-  npm run dev pause 1
-  npm run dev resume 1
-  npm run dev list
+  npm run dev -- jobs
+  npm run dev -- list
+  npm run dev -- status 1
+
+Os exemplos históricos estão desativados. Novos jobs serão adicionados após os ajustes.
                 `);
         }
     } catch (error: any) {
         console.error(`❌ Erro: ${error.message}`);
-        process.exit(1);
+        process.exitCode = 1;
+        // start mantém o worker contínuo; em falha preserva a saída imediata anterior.
+        if (command === 'start') process.exit(1);
+    } finally {
+        if (command !== 'start' && database) await database.destroy();
     }
 }
 
@@ -101,9 +107,20 @@ Exemplos:
 // FUNÇÕES DA CLI
 // =====================
 
+function parseJobId(value: string): number {
+    const id = Number(value);
+    if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(id)) {
+        throw new Error('ID deve ser um inteiro positivo.');
+    }
+    return id;
+}
+
 async function createJob(jobName: string): Promise<void> {
     console.log(`🚀 Criando job "${jobName}" localmente...`);
     await registerJobsFromDisk();
+    if (!JobRegistry.has(jobName)) {
+        throw new Error(`Job "${jobName}" não encontrado no registry`);
+    }
 
     const manager = getOrCreateManager();
     // Garantir que o JobManager está rodando para dispatch
@@ -247,6 +264,9 @@ async function registerJobsFromDisk(): Promise<void> {
 }
 
 function getOrCreateManager(): JobManager {
+    // Ajuda e catálogo não precisam abrir/configurar o banco.
+    const { JobManager } = require('../core/JobManager');
+    database = require('../db/conection').db;
     try {
         return JobManager.getInstance();
     } catch (err) {

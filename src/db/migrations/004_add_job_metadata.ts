@@ -21,11 +21,14 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-    // Remover campos adicionados
+    // Reverte todas as colunas criadas em up; PostgreSQL remove seus índices dependentes.
     await knex.schema.alterTable('batch_jobs', table => {
         table.dropColumn('priority');
         table.dropColumn('tags');
         table.dropColumn('scheduled_at');
+        table.dropColumn('started_at');
+        table.dropColumn('completed_at');
+        table.dropColumn('error_count');
         table.dropColumn('worker_id');
     });
 }

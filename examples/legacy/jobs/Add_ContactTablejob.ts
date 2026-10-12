@@ -1,5 +1,5 @@
-import { BatchJob } from '../core/BatchJob';
-import { db } from '../db/conection';
+import { BatchJob } from '../../../src/core/BatchJob';
+import { db } from '../../../src/db/conection';
 
 export class AddContactTableJob extends BatchJob<any> {
     tableName = 'contacts_user';

@@ -1,0 +1,70 @@
+[
+  {
+    "timestamp": "2026-10-01T00:19:23.092642+00:00",
+    "command": "npm ci",
+    "exit_code": 0,
+    "output": "added 56 packages, and audited 57 packages in 4s\n\n4 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities"
+  },
+  {
+    "timestamp": "2026-10-01T00:19:28.423817+00:00",
+    "command": "npm run build",
+    "exit_code": 0,
+    "output": "> processamento-em-lote-monorepo@1.0.0 build\n> node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc"
+  },
+  {
+    "timestamp": "2026-10-01T00:20:00.151303+00:00",
+    "command": "npm test",
+    "exit_code": 0,
+    "output": "> processamento-em-lote-monorepo@1.0.0 test\n> node --test --test-concurrency=1 tests/unit/*.test.cjs\n\nTAP version 13\n# Subtest: build limpo não conserva exemplos ou migration users em dist\nok 1 - build limpo não conserva exemplos ou migration users em dist\n  ---\n  duration_ms: 2.2448\n  type: 'test'\n  ...\n# Subtest: job não registrado é recusado antes de abrir banco ou iniciar worker\nok 2 - job não registrado é recusado antes de abrir banco ou iniciar worker\n  ---\n  duration_ms: 2104.7035\n  type: 'test'\n  ...\n# Subtest: ID parcialmente numérico é recusado antes de abrir o banco\nok 3 - ID parcialmente numérico é recusado antes de abrir o banco\n  ---\n  duration_ms: 1811.6543\n  type: 'test'\n  ...\n# Subtest: catálogo padrão não inclui jobs históricos\nok 4 - catálogo padrão não inclui jobs históricos\n  ---\n  duration_ms: 1651.3693\n  type: 'test'\n  ...\n# Subtest: ajuda da CLI funciona sem configuração de banco\nok 5 - ajuda da CLI funciona sem configuração de banco\n  ---\n  duration_ms: 1678.3554\n  type: 'test'\n  ...\n# Subtest: runtime e migrations usam a mesma configuração de ambiente\nok 6 - runtime e migrations usam a mesma configuração de ambiente\n  ---\n  duration_ms: 3602.9433\n  type: 'test'\n  ...\n# Subtest: banco explícito obrigatório\nok 7 - banco explícito obrigatório\n  ---\n  duration_ms: 1860.2121\n  type: 'test'\n  ...\n# Subtest: usuário obrigatório\nok 8 - usuário obrigatório\n  ---\n  duration_ms: 1906.9179\n  type: 'test'\n  ...\n# Subtest: senha obrigatória\nok 9 - senha obrigatória\n  ---\n  duration_ms: 1823.2938\n  type: 'test'\n  ...\n# Subtest: porta inválida\nok 10 - porta inválida\n  ---\n  duration_ms: 2295.4437\n  type: 'test'\n  ...\n# Subtest: pool inválido\nok 11 - pool inválido\n  ---\n  duration_ms: 2247.272\n  type: 'test'\n  ...\n# Subtest: carrega arquivo explícito e preserva a precedência do ambiente\nok 12 - carrega arquivo explícito e preserva a precedência do ambiente\n  ---\n  duration_ms: 1963.0537\n  type: 'test'\n  ...\n# Subtest: migrations recusam banco original antes de abrir conexão\nok 13 - migrations recusam banco original antes de abrir conexão\n  ---\n  duration_ms: 2389.0143\n  type: 'test'\n  ...\n# Subtest: rollback exige confirmação explícita antes de abrir conexão\nok 14 - rollback exige confirmação explícita antes de abrir conexão\n  ---\n  duration_ms: 2778.265\n  type: 'test'\n  ...\n1..14\n# tests 14\n# suites 0\n# pass 14\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 28579.6592"
+  },
+  {
+    "timestamp": "2026-10-01T00:20:18.464218+00:00",
+    "command": "npm run test:integration",
+    "exit_code": 0,
+    "output": "> processamento-em-lote-monorepo@1.0.0 test:integration\n> node -r ts-node/register --test --test-concurrency=1 tests/integration/*.test.cjs\n\nTAP version 13\n# Subtest: dev: list trata banco vazio e encerra\nok 1 - dev: list trata banco vazio e encerra\n  ---\n  duration_ms: 2942.5927\n  type: 'test'\n  ...\n# Subtest: dev: status 1 trata banco vazio e encerra\nok 2 - dev: status 1 trata banco vazio e encerra\n  ---\n  duration_ms: 2680.5009\n  type: 'test'\n  ...\n# Subtest: dev: logs 1 trata banco vazio e encerra\nok 3 - dev: logs 1 trata banco vazio e encerra\n  ---\n  duration_ms: 2896.6746\n  type: 'test'\n  ...\n# Subtest: compilado: list trata banco vazio e encerra\nok 4 - compilado: list trata banco vazio e encerra\n  ---\n  duration_ms: 553.1359\n  type: 'test'\n  ...\n# Subtest: compilado: status 1 trata banco vazio e encerra\nok 5 - compilado: status 1 trata banco vazio e encerra\n  ---\n  duration_ms: 556.0434\n  type: 'test'\n  ...\n# Subtest: compilado: logs 1 trata banco vazio e encerra\nok 6 - compilado: logs 1 trata banco vazio e encerra\n  ---\n  duration_ms: 541.149\n  type: 'test'\n  ...\n# Subtest: metadata down restaura o schema anterior e permite reaplicar up\nok 7 - metadata down restaura o schema anterior e permite reaplicar up\n  ---\n  duration_ms: 133.843\n  type: 'test'\n  ...\n# Subtest: migration de exemplo users permite up/down/up\nok 8 - migration de exemplo users permite up/down/up\n  ---\n  duration_ms: 14.2342\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 15038.8685"
+  },
+  {
+    "timestamp": "2026-10-01T00:20:23.559642+00:00",
+    "command": "npm run db:check",
+    "exit_code": 0,
+    "output": "> processamento-em-lote-monorepo@1.0.0 db:check\n> ts-node src/db/migrate.ts check\n\nDestino confirmado: tcc_framework_test (usuário postgres)."
+  },
+  {
+    "timestamp": "2026-10-01T00:20:29.159570+00:00",
+    "command": "npm audit",
+    "exit_code": 0,
+    "output": "found 0 vulnerabilities"
+  },
+  {
+    "timestamp": "2026-10-01T00:20:33.030792+00:00",
+    "command": "npm ls --depth=0",
+    "exit_code": 0,
+    "output": "processamento-em-lote-monorepo@1.0.0 M:\\ProjetoTcc\\Processamento_em_loteV5\n├── @types/node@25.2.3\n├── knex@3.1.0\n├── pg@8.18.0\n├── ts-node@10.9.2\n└── typescript@5.9.3"
+  },
+  {
+    "timestamp": "2026-10-01T00:20:37.670029+00:00",
+    "command": "npm ls lodash",
+    "exit_code": 0,
+    "output": "processamento-em-lote-monorepo@1.0.0 M:\\ProjetoTcc\\Processamento_em_loteV5\n└─┬ knex@3.1.0\n  └── lodash@4.18.1"
+  },
+  {
+    "timestamp": "2026-10-01T00:20:43.459317+00:00",
+    "command": "npm run dev -- --help",
+    "exit_code": 0,
+    "output": "> processamento-em-lote-monorepo@1.0.0 dev\n> ts-node src/cli/index.ts --help\n\n\nBatch Framework CLI\n\nComandos disponíveis:\n  start <job_name>     Inicia um novo job\n  pause <job_id>       Pausa um job em execução\n  resume <job_id>      Retoma um job pausado\n  list                 Lista todos os jobs\n  status <job_id>      Mostra detalhes de um job\n  logs <job_id>        Mostra logs de um job\n  jobs                 Lista jobs disponíveis no registry\n\nExemplos:\n  npm run dev -- jobs\n  npm run dev -- list\n  npm run dev -- status 1\n\nOs exemplos históricos estão desativados. Novos jobs serão adicionados após os ajustes."
+  },
+  {
+    "timestamp": "2026-10-01T00:20:45.046107+00:00",
+    "command": "npm run dev -- jobs",
+    "exit_code": -1,
+    "output": ""
+  },
+  {
+    "timestamp": "2026-10-01T00:22:12.355652+00:00",
+    "command": "npm run dev -- jobs && npm start -- --help && npm start -- jobs && npm run dev -- list && npm run dev -- status 1 && npm start -- list && npm start -- status 1",
+    "exit_code": 0,
+    "output": "> processamento-em-lote-monorepo@1.0.0 dev\n> ts-node src/cli/index.ts jobs\n\n📦 Jobs disponíveis:\n\nNenhum job encontrado.\n\n> processamento-em-lote-monorepo@1.0.0 start\n> node dist/cli/index.js --help\n\n\nBatch Framework CLI\n\nComandos disponíveis:\n  start <job_name>     Inicia um novo job\n  pause <job_id>       Pausa um job em execução\n  resume <job_id>      Retoma um job pausado\n  list                 Lista todos os jobs\n  status <job_id>      Mostra detalhes de um job\n  logs <job_id>        Mostra logs de um job\n  jobs                 Lista jobs disponíveis no registry\n\nExemplos:\n  npm run dev -- jobs\n  npm run dev -- list\n  npm run dev -- status 1\n\nOs exemplos históricos estão desativados. Novos jobs serão adicionados após os ajustes.\n                \n\n> processamento-em-lote-monorepo@1.0.0 start\n> node dist/cli/index.js jobs\n\n📦 Jobs disponíveis:\n\nNenhum job encontrado.\n\n> processamento-em-lote-monorepo@1.0.0 dev\n> ts-node src/cli/index.ts list\n\n📋 Listando jobs locais...\n\nNenhum job encontrado.\n\n> processamento-em-lote-monorepo@1.0.0 dev\n> ts-node src/cli/index.ts status 1\n\n🔍 Status do job 1 localmente:\n\nJob não encontrado.\n\n> processamento-em-lote-monorepo@1.0.0 start\n> node dist/cli/index.js list\n\n📋 Listando jobs locais...\n\nNenhum job encontrado.\n\n> processamento-em-lote-monorepo@1.0.0 start\n> node dist/cli/index.js status 1\n\n🔍 Status do job 1 localmente:\n\nJob não encontrado.",
+    "error": null,
+    "note": "Reexecução após retorno -1 sem saída na chamada anterior. O retorno anterior foi preservado; a mesma sequência também passou em chamada direta do terminal."
+  }
+]

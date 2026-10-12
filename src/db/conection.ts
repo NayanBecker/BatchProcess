@@ -1,13 +1,4 @@
 import knex from 'knex';
+import { databaseConfig } from './config';
 
-export const db = knex({
-    client: 'pg',
-    connection: {
-        host: "127.0.0.1",
-        user: "postgres",
-        password: "postgres",
-        database: "postgres",
-        port: 5432,
-    },
-    pool: { min: 2, max: 10 }
-});
+export const db = knex(databaseConfig());

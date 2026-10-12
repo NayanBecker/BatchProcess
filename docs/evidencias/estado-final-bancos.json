@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-10-01T00:22:14.558561+00:00",
+  "original_database": "postgres",
+  "canonical_schema_sha256": "91bf36aea53ee44e921238618ab65a0c51b9dafdd2215005c65c89fe083a6b28",
+  "matches_before": true,
+  "test_database": {
+    "database": "tcc_framework_test",
+    "tables": [
+      "batch_job_errors",
+      "batch_job_logs",
+      "batch_jobs",
+      "knex_migrations",
+      "knex_migrations_lock"
+    ],
+    "migrations": 4,
+    "jobs": 0,
+    "logs": 0,
+    "errors": 0
+  },
+  "limit": "Comparação de schema, não auditoria de linhas do banco original; não se executou escrita no banco original."
+}
