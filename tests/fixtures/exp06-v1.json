@@ -1,0 +1,18 @@
+{
+  "manifest": {
+    "format": "phase-c-exp06-fixture-v1",
+    "table": "teste_socios",
+    "ddl": "id bigint primary key;nome text;nome_normalizado text;processado boolean not null default false",
+    "count": "3",
+    "minId": "1",
+    "maxId": "9007199254740993",
+    "nullNames": "1",
+    "eligible": "3",
+    "sha256": "cca0ab5de1865c7cb02004f511512e2e404a7a87d86c39d357890dfb84f1fe0e"
+  },
+  "rows": [
+    {"id":"1","nome":null,"nome_normalizado":null,"processado":false},
+    {"id":"9","nome":"","nome_normalizado":null,"processado":false},
+    {"id":"9007199254740993","nome":"  Ána  ","nome_normalizado":null,"processado":false}
+  ]
+}

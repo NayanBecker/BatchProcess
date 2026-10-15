@@ -1,5 +1,6 @@
 import { BatchJobErrorModel } from '../db/models';
 import { LogLevel } from '../types';
+import { resolveJobConfig, JobConfigInput } from './jobConfig';
 
 /**
  * Configuração de retry
@@ -149,10 +150,8 @@ export abstract class BatchJob<T> {
     /**
      * Construtor permite injetar configuração customizada
      */
-    constructor(config?: Partial<JobConfig>) {
-        if (config) {
-            this.config = { ...this.config, ...config };
-        }
+    constructor(config: JobConfigInput = {}) {
+        this.config = resolveJobConfig(this.config, config);
     }
 
     /**

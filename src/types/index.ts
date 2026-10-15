@@ -5,6 +5,16 @@
 /**
  * Status possíveis de um job
  */
+/** Retained telemetry v1; attempts are durable admissions, not inferred retries.
+ * Duration is monotonic transaction callback entry through DML, BEFORE checkpoint/COMMIT.
+ * CPU belongs to this Node process (not SQL); RSS max is boundary samples, not exact peak.
+ */
+export interface BatchObservability {
+    version: 1; attempts: number; failures: number; samples: number; lastCommittedAttempt?: number;
+    visited: string; changed: string; inserted: string; deleted: string;
+    workSeconds: number; cpuSeconds: number; rssSampleMaxBytes: number;
+}
+
 export type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'cancelled' | 'failed';
 
 /**
@@ -55,12 +65,14 @@ export interface JobConfig {
  * Métricas de execução de um job
  */
 export interface JobMetrics {
-    itemsProcessed: number;
-    itemsPerSecond: number;
+    activeDurationMs: number; pausedDurationMs: number; wallDurationMs: number; timingUncertain: boolean;
+    itemsProcessed: number | string;
+    itemsPerSecond: number | null;
     errorsCount: number;
     retriesCount: number;
     totalDurationMs: number;
-    avgItemDurationMs: number;
+    /** Legacy compatibility field, not observed item latency. Null for transactional jobs. */
+    avgItemDurationMs: number | null;
     lastBatchAt?: Date;
 }
 
@@ -68,12 +80,14 @@ export interface JobMetrics {
  * Entrada na tabela batch_jobs
  */
 export interface BatchJobRow {
+    effective_config?: JobConfig;
+    transactional_state?: import('../core/TransactionalBatchJob').TransactionalState;
     id: number;
     job_name: string;
     status: JobStatus;
     batch_size: number;
-    current_id: number;
-    processed_rows: number;
+    current_id: number | string;
+    processed_rows: number | string;
     throttle_ms: number;
     priority: number;
     tags: string[];
@@ -140,6 +154,7 @@ export interface JobEvent<T = any> {
  * DTO de job para uso interno e na CLI
  */
 export interface JobDTO {
+    transactionalState?: import('../core/TransactionalBatchJob').TransactionalState;
     id: number;
     job_name: string;
     status: JobStatus;

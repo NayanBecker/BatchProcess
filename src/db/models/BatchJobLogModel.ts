@@ -1,4 +1,10 @@
-import { db } from '../conection';
+import { isCanonicalIdentifier } from '../../core/identifiers';
+import { PersistenceContext } from './BatchJobModel';
+import { guardTransactionalConnection } from '../../core/TransactionalOwnership';
+function scoped(context?: PersistenceContext) {
+    if (!context || !isCanonicalIdentifier(context.schema)) throw new Error('Contexto explícito obrigatório');
+    return context.db('batch_job_logs').withSchema(context.schema);
+}
 import { BatchJobLogRow, LogLevel } from '../../types';
 
 export class BatchJobLogModel {
@@ -9,9 +15,13 @@ export class BatchJobLogModel {
         jobId: number,
         level: LogLevel,
         message: string,
-        metadata?: Record<string, any>
+        metadata?: Record<string, any>,
+        context?: PersistenceContext
     ): Promise<BatchJobLogRow> {
-        const [row] = await db('batch_job_logs')
+        if (!context) throw new Error('Contexto explícito obrigatório');
+        return context.db.transaction(async trx=>{
+        await guardTransactionalConnection(trx,context);
+        const [row] = await scoped({...context,db:trx})
             .insert({
                 job_id: jobId,
                 level,
@@ -21,6 +31,7 @@ export class BatchJobLogModel {
             .returning('*');
 
         return row as BatchJobLogRow;
+        });
     }
 
     /**
@@ -32,9 +43,10 @@ export class BatchJobLogModel {
             page: number;
             limit: number;
         },
-        levels?: LogLevel[]
+        levels?: LogLevel[],
+        context?: PersistenceContext
     ): Promise<BatchJobLogRow[]> {
-        const query = db('batch_job_logs')
+        const query = scoped(context)
             .where({ job_id: jobId });
 
         if (levels && levels.length > 0) {
@@ -54,9 +66,9 @@ export class BatchJobLogModel {
     /**
      * Busca logs recentes de todos os jobs
      */
-    static async findRecent(limit: number = 100): Promise<(BatchJobLogRow & { job_name: string })[]> {
-        return await db('batch_job_logs')
-            .join('batch_jobs', 'batch_job_logs.job_id', 'batch_jobs.id')
+    static async findRecent(limit: number = 100, context?: PersistenceContext): Promise<(BatchJobLogRow & { job_name: string })[]> {
+        return await scoped(context)
+            .join(`${context!.schema}.batch_jobs`, 'batch_job_logs.job_id', 'batch_jobs.id')
             .select(
                 'batch_job_logs.*',
                 'batch_jobs.job_name'
@@ -68,13 +80,16 @@ export class BatchJobLogModel {
     /**
      * Limpa logs muito antigos (retenção)
      */
-    static async cleanupOlderThan(days: number): Promise<number> {
+    static async cleanupOlderThan(days: number, context?: PersistenceContext): Promise<number> {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - days);
 
-        const result = await db('batch_job_logs')
-            .where('created_at', '<', cutoffDate)
-            .del();
+        if (!context) throw new Error('Contexto explícito obrigatório');
+        const result = await context.db.transaction(async trx=>{
+            await guardTransactionalConnection(trx,context);
+            const deleted=await scoped({...context,db:trx}).where('created_at','<',cutoffDate).del().returning('id');
+            return deleted.length;
+        });
 
         return result;
     }
@@ -84,12 +99,13 @@ export class BatchJobLogModel {
      */
     static async countByLevel(
         jobId?: number,
-        hoursBack: number = 24
+        hoursBack: number = 24,
+        context?: PersistenceContext
     ): Promise<Record<LogLevel, number>> {
         const cutoff = new Date();
         cutoff.setHours(cutoff.getHours() - hoursBack);
 
-        const baseQuery = db('batch_job_logs')
+        const baseQuery = scoped(context)
             .where('created_at', '>=', cutoff);
 
         if (jobId) {

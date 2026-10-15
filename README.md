@@ -1,35 +1,35 @@
 # Framework de processamento em lote — TCC II
 
-**Comece por [STATUS-TCC.md](STATUS-TCC.md): resumo do que foi feito e do que falta.**
+Comece por [STATUS-TCC.md](STATUS-TCC.md). Review atual: [REVIEW-FASE-C.md](docs/REVIEW-FASE-C.md).
 
-- [Fase B — protocolo atual](docs/experiments/protocol.md): dez operações nas tabelas auxiliares de `postgres.public`.
-- [SQL das operações, ainda não executado](experiments/operations/README.md).
-- `tcc_framework_test` permanece para desenvolvimento/testes internos. O fluxo abaixo é da Fase A, não executa benchmarks em `postgres`.
+## Caminho ativo
 
-Protótipo de Nayan Tobias Becker. Esta base dá continuidade ao TCC I; a **Fase A prepara e valida a instalação**, não comprova desempenho nem confiabilidade do processamento massivo.
+- Núcleo set-based transacional A/B com checkpoint junto do DML, posse de sessão e recuperação explícita.
+- Jobs disponíveis: NormalizeSocioNamesJob (EXP-06), CopySociosJob (EXP-08), DeleteMigratedJob (EXP-09).
+- Fixtures: exclusivamente tcc_framework_test/schema isolado. Manual: **clone LOCAL próprio**, config separada; postgres e tcc_framework_test proibidos no modo manual. backup_testes só admite o opt-in estrito de [TESTE-BACKUP-LOCAL.md](docs/TESTE-BACKUP-LOCAL.md).
+- [Roteiro manual completo](docs/ROTEIRO-MANUAL-FASE-C.md), [config sem segredos/em aberto](config/clone.example.json), [evidências](docs/EVIDENCIAS-FASE-C-FINAL.md).
+- [Protocolo v3](docs/experiments/protocol.md) é desenho metodológico; [SQLs originais](experiments/operations/README.md) permanecem arquivados/inalterados, não são comandos para executar indiscriminadamente.
 
-- [Preparação reproduzível e cuidados com o banco](docs/PREPARACAO-FASE-A.md)
-- [Inventário do ambiente observado](docs/AMBIENTE-FASE-A.md)
-- [Registro das validações](docs/VALIDACAO-FASE-A.md)
-- [Exemplos históricos, desativados](examples/legacy/README.md)
+## Verificação local, sem benchmark
 
-## Fluxo rápido
-
-Requer Node.js >=22.22.2, npm e PostgreSQL disponível. Primeiro siga o guia para criar/configurar **exclusivamente `tcc_framework_test`** e preencher o `.env` local (nunca versionado).
+Node.js >=22.22.2 e dependências já instaladas. Configuração global existente é somente das fixtures; não redirecioná-la ao clone.
 
 ```bash
-npm ci
 npm run build
 npm test
 npm run db:check
-npm run migrate
 npm run test:integration
-npm run dev -- jobs
-npm start -- list
+npm start -- jobs
+npm start -- fixture --help
+npm start -- manual --help
 ```
 
-Na Fase A, o catálogo de jobs e a tabela de execuções devem estar vazios. Novos jobs serão criados depois dos ajustes funcionais. Não execute os exemplos antigos para tentar preencher a listagem.
+A CLI legada start/list/status/logs sem destino e o caminho item/processItem foram arquivados por autorização. Use fixture/manual com target explícito; resume apenas reenfileira, dispatch executa. Review manual é pequeno/controlado, não campanha massiva. Não houve benchmark nem certificação de backup real; instrumentação/visualização são próximas fases.
 
-**Atenção:** `npm run migrate:rollback -- --confirm=tcc_framework_test` remove as tabelas/dados do último lote de migrations do banco de testes. Não é um comando de consulta. O guia explica o ciclo de validação e a incompatibilidade com o histórico antigo de `users`.
+## Histórico
 
-A documentação antiga `# Sistema de Processamento em Lote - Doc.md` permanece como referência histórica. Para preparar esta versão, use o guia da Fase A. Retomada, checkpoints, retries, timeout, concorrência e experimentos ainda precisam de validação própria.
+`validate` de resultados/dados e `restore` foram retirados da implementação, CLI/API de review e build; o wrapper também os recusa antes de carregar configuração/conexão. [Arquivo histórico](archive/result-tools/README.md), sem substituto externo executável. Snapshots de preparo/token e histórico existentes preservados; helpers sintéticos apenas em tests/helpers, fora de dist. Cada nova rodada A/B usa conjunto inicial isolado, sem reset implícito.
+
+**Permanecem no framework:** verificar conclusão/falha do job, status/completed/failed, error_count, logs/errors, detecção SQL/checkpoint, preconditions/validateInitial, guards de entrada/destino, rollback e recovery. `completed` não é certificado de integridade dos dados. Comparações independentes de resultados continuam nas suítes com assertions/SQL de teste.
+
+[Preparação Fase A](docs/PREPARACAO-FASE-A.md), [ambiente](docs/AMBIENTE-FASE-A.md) e [validação A](docs/VALIDACAO-FASE-A.md) preservam evidências históricas, não instruções da CLI atual. Exemplos em examples/legacy e snapshots em archive/legacy-phase-c não são compilados/executados/testados. Não execute migrations em public para preparar review do clone; prepare instala somente controle privado com guards. Nada foi feito com npm migrate nesta entrega.

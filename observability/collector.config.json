@@ -1,0 +1,1 @@
+{"connection":{"host":"127.0.0.1","port":5432,"database":"backup_testes","user":"postgres","passwordEnv":"TCC_MONITOR_PASSWORD"},"controlSchema":"benchmark_control","bind":"127.0.0.1","port":9464}

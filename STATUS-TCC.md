@@ -1,45 +1,42 @@
-# TCC II — Comece por aqui
+# TCC II — Estado atual
 
-## Já feito
-- [x] **Fase A:** configuração, instalação/build, migrations internas e CLI básica validados; evidências em `docs/VALIDACAO-FASE-A.md`.
-- [x] Seis tabelas auxiliares criadas/alimentadas em **postgres.public**, preservando a origem. Registro: `experiments/setup/README.md`.
-- [x] Dez operações enviadas salvas em `experiments/operations/`, sem execução.
-- [x] **Fase B concluída como desenho:** protocolo versão 3 em `docs/experiments/protocol.md`; decisões restantes delegadas por Nayan e registradas.
+## Fase C concluída — escopo DML transacional ativo
 
-## Decidido
-- **Knex mantido** para agilizar o desenvolvimento do protótipo.
-- **Contratos A/B aprovados:** A com transação global; B com transação por lote e dados/checkpoint no mesmo commit. Implementação e validação ainda pendentes.
-- **Benchmark:** postgres, tabelas `teste_*`; não modificar a tabela principal.
-- **Desenvolvimento/testes internos:** tcc_framework_test. Conexão global não foi trocada.
-- Cada operação é um experimento independente; restaurar antes de cada A/B.
-- Métricas e visualização devem estar prontas antes dos benchmarks.
-- Cenário antigo de e-mails sintéticos foi substituído.
-- **Somente DML:** EXP-01 a EXP-09; EXP-10 arquivado fora do benchmark. DDL/preparação/validação/finalização fora da janela DML.
-- **Base preservada:** backup_testes; existência e estrutura inspecionadas, conteúdo integral/restauração ainda a validar.
+- Núcleo transacional A/B, checkpoint/DML atômicos, BIGINT/H, posse de sessão, pausa/cancelamento cooperativos, requeue/dispatch/recovery explícitos e shutdown próprio verificados em fixtures pequenas.
+- EXP-06 UPDATE, EXP-08 INSERT SELECT/cópia e EXP-09 DELETE disponíveis. SQL A/B compartilhado; marcação SC do DELETE é preparação separada. Outras operações do catálogo metodológico não são jobs disponíveis.
+- Por autorização posterior do usuário, caminho item/processItem, retry/Promise.race e CLI legados foram arquivados fora de aplicação/build/testes/validações. Manager, registry e modelos compartilhados permanecem; consolidação de config/contexto e timing foi exercitada no escopo ativo.
+- Review manual exige **clone LOCAL do usuário**, configuração separada em config/clone.example.json. postgres/tcc_framework_test proibidos no modo manual; backup_testes exige opt-in estrito e schemas privados fixos. Evidência de execução anterior no backup é histórica; esta retirada não operou nele nem redirecionou a conexão global.
+- Manual oferece check-config/check/prepare/mark/run A/B/list/status/logs/errors/pause/cancel/resume/recover/dispatch, target/allowlist/confirmação exatos e token dry-run. Review pequeno/controlado, até 1000 linhas por tabela.
+- **Retirados validate de resultados/dados e restore**, incluindo branches/flags/interfaces/implementação da aplicação e build. Wrapper recusa ambos antes de carregar conexão. Trechos/roteiros superados em archive/result-tools; nenhum substituto externo executável. Helpers sintéticos movidos para tests/helpers/fixture-artifact.ts; snapshots de preparo, histórico e checkpoints preservados.
+- **Não retirados:** status/completed/failed, error_count, logs/errors, falhas SQL/checkpoint, validateInitial/preconditions, guards de parâmetros/destino, rollback e recovery. completed é conclusão operacional, não integridade de dados certificada. Asserções/SQL independentes de resultados permanecem nas suítes; A/B usam fixtures novas, sem reset de aplicação.
 
-## Decisões finais da Fase B
-- Cenário inicial: **EXP-06**, maiúsculas + TRIM, sem alterar espaços internos.
-- EXP-05: nome único sem sobrenome; normalizar espaços ASCII; vazio/nulo sem nome/sobrenome.
-- EXP-08: destino vazio, cópia sem apagar origem, retomada pelo checkpoint atômico; conflito aborta, não é ignorado.
-- EXP-09: medir apenas **DELETE**, com marcação de SC preparada antes.
-- Restaurar auxiliares a partir da mesma base antes de cada A/B; fixar teto de IDs; verificar conjuntos e divergências, não apenas completed.
-- Controle experimental no futuro schema benchmark_control em postgres, para compartilhar transação com os dados.
+## Evidência atual
 
-## Próximas entregas — implementação e validação
-1. Certificar backup/restauração e implementar/validar execução A/B, checkpoint e regras adotadas (incluindo correção do EXP-05).
-2. Instrumentar métricas e dashboards; preparar carga concorrente.
-3. Pilotar, repetir, coletar e analisar benchmarks.
+**Fase D v1 concluída no escopo de observabilidade funcional:** Prometheus com 4 alvos ativos; Grafana em http://127.0.0.1:3000/d/tcc-phase-d, 30 painéis/29 consultas. Métricas reais PostgreSQL/container/estado e diário por lote instrumentado; regressão atual 43 unitários/57 integrações aprovada pelo agente principal, revisão independente sem bloqueadores. Histórico antigo sem métricas v1 permanece sem série. Detalhes/limites: `docs/OBSERVABILIDADE-FASE-D.md`. Sem carga concorrente ou benchmark; Fase E pendente.
 
-**Não realizado:** execução das dez operações, runner A/B, validação de falhas desse contrato ou benchmark. SQL salvo não significa job implementado.
+Retirada: RED observado na recusa CLI/API antes de configuração/import de banco; GREEN confirmado. Build exit 0; unitários **43/43**; integração **56/56** (incluindo parents/subtestes Node), zero failures/skips/cancelled/todo. db:check confirmou tcc_framework_test antes de integração; fixtures próprias com cleanup e leitura final do catálogo: **zero schemas phase_c_test_<32 hex>**. git diff --check exit 0 (avisos LF/CRLF somente). Contagens em docs/EVIDENCIAS-FASE-C-FINAL.md são históricas superadas. Worktree preservado sem commit/push/reset; sem benchmark ou mutação do backup/postgres.
 
-## Onde procurar
-| Preciso de... | Arquivo/pasta |
+Quatro achados finais corrigidos e exercitados: identificadores canônicos <=63 bytes sem aliases/truncamento; fencing de destino durável nos controles sob row lock; throttle <=2147483647 ms antes de pool/persistência; AbortSignal sticky do comando com checks antes de criação/dispatch/aquisição. RED/GREEN e problemas corrigidos do harness registrados no relatório. Evento Node SIGINT simulado, não sinal nativo Windows. Correções conferidas em nova revisão independente, sem bloqueadores remanescentes; aceite do agente principal registrado.
+
+## Limites e próximas fases
+
+- Fase C encerrada pelo agente principal no escopo ativo EXP-06/08/09, após regressão e revisão independente. Não certifica campanha massiva ou clone real.
+- Resposta COMMIT perdida na rede não exercitada. Crash real, perda de backend e confirmação descartada simulada têm evidência; recovery relê estado com posse e não presume rollback/ exactly-once.
+- Backup real e restauração de campanha não certificados. Não há restore de review no framework; snapshot de preparo/fixture não substitui backup. Nova execução exige conjunto inicial isolado preparado externamente pelo operador, sem apagar histórico para destravar.
+- Instrumentação Prometheus/Grafana v1 entregue; desempenho/escalabilidade, carga concorrente, piloto e benchmarks permanecem posteriores. Concurrency de review é um worker/contexto; não alegar escala arbitrária. cAdvisor observa a VM Linux, não o host Windows.
+- Timing ativo/pausado/parede é operacional delimitado por checkpoints; recovery marca intervalo desconhecido. Logs/erros auxiliares são best-effort em perda de conexão.
+- Nesta retirada: nenhuma escrita em postgres, backup_testes ou origem; nenhum .env/deps/public migration/benchmark modificado ou executado. Evidências anteriores do backup continuam arquivadas como históricas.
+
+## Referências
+
+| Assunto | Fonte |
 |---|---|
-| Resumo atual | **Este arquivo** |
-| Contrato e pendências da Fase B | `docs/experiments/protocol.md` |
-| SQL das dez operações | `experiments/operations/` |
-| Preparação das seis tabelas | `experiments/setup/` |
-| Instalação e banco de desenvolvimento | `docs/PREPARACAO-FASE-A.md` |
-| Hardware e ambiente observado | `docs/AMBIENTE-FASE-A.md` |
+| Review consolidado, aceites e RF/RNF do PDF TCC I | docs/REVIEW-FASE-C.md |
+| Roteiro manual completo com configuração aberta | docs/ROTEIRO-MANUAL-FASE-C.md |
+| Evidência/contagens/inventário finais | docs/EVIDENCIAS-FASE-C-FINAL.md |
+| Histórico C anterior | docs/VALIDACAO-FASE-C.md |
+| Protocolo metodológico v3 | docs/experiments/protocol.md |
+| SQLs originais preservados | experiments/operations/ |
+| Arquivamento do legado | archive/legacy-phase-c/README.md |
 
-Planos antigos são históricos; o protocolo acima orienta o cenário atual. Não há atualização automática do Notion nesta entrega.
+Fases A/B preservadas como evidências/definição histórica; não há atualização automática do Notion.

@@ -1,4 +1,10 @@
-import { db } from '../conection';
+import { isCanonicalIdentifier } from '../../core/identifiers';
+import { PersistenceContext } from './BatchJobModel';
+import { guardTransactionalConnection } from '../../core/TransactionalOwnership';
+function scoped(context?: PersistenceContext) {
+    if (!context || !isCanonicalIdentifier(context.schema)) throw new Error('Contexto explícito obrigatório');
+    return context.db('batch_job_errors').withSchema(context.schema);
+}
 import { BatchJobErrorRow } from '../../types';
 
 export class BatchJobErrorModel {
@@ -9,9 +15,13 @@ export class BatchJobErrorModel {
         jobId: number,
         error: Error,
         recordId?: number,
-        retryCount: number = 0
+        retryCount: number = 0,
+        context?: PersistenceContext
     ): Promise<BatchJobErrorRow> {
-        const [row] = await db('batch_job_errors')
+        if (!context) throw new Error('Contexto explícito obrigatório');
+        return context.db.transaction(async trx=>{
+        await guardTransactionalConnection(trx,context);
+        const [row] = await scoped({...context,db:trx})
             .insert({
                 job_id: jobId,
                 error_message: error.message,
@@ -23,6 +33,7 @@ export class BatchJobErrorModel {
             .returning('*');
 
         return row as BatchJobErrorRow;
+        });
     }
 
     /**
@@ -33,9 +44,10 @@ export class BatchJobErrorModel {
         pagination?: {
             page: number;
             limit: number;
-        }
+        },
+        context?: PersistenceContext
     ): Promise<BatchJobErrorRow[]> {
-        const query = db('batch_job_errors')
+        const query = scoped(context)
             .where({ job_id: jobId })
             .orderBy('created_at', 'desc');
 
@@ -50,8 +62,8 @@ export class BatchJobErrorModel {
     /**
      * Conta erros por job
      */
-    static async countByJobId(jobId: number): Promise<number> {
-        const result = await db('batch_job_errors')
+    static async countByJobId(jobId: number, context?: PersistenceContext): Promise<number> {
+        const result = await scoped(context)
             .where({ job_id: jobId })
             .count('id as count')
             .first();
@@ -62,9 +74,9 @@ export class BatchJobErrorModel {
     /**
      * Busca últimos erros de todos os jobs (para dashboard)
      */
-    static async findRecent(limit: number = 50): Promise<(BatchJobErrorRow & { job_name: string })[]> {
-        return await db('batch_job_errors')
-            .join('batch_jobs', 'batch_job_errors.job_id', 'batch_jobs.id')
+    static async findRecent(limit: number = 50, context?: PersistenceContext): Promise<(BatchJobErrorRow & { job_name: string })[]> {
+        return await scoped(context)
+            .join(`${context!.schema}.batch_jobs`, 'batch_job_errors.job_id', 'batch_jobs.id')
             .select(
                 'batch_job_errors.*',
                 'batch_jobs.job_name'
@@ -76,20 +88,27 @@ export class BatchJobErrorModel {
     /**
      * Remove erros de um job (útil para limpeza após retry)
      */
-    static async deleteByJobId(jobId: number): Promise<void> {
-        await db('batch_job_errors').where({ job_id: jobId }).del();
+    static async deleteByJobId(jobId: number, context?: PersistenceContext): Promise<void> {
+        if (!context) throw new Error('Contexto explícito obrigatório');
+        await context.db.transaction(async trx=>{
+            await guardTransactionalConnection(trx,context);
+            await scoped({...context,db:trx}).where({job_id:jobId}).del();
+        });
     }
 
     /**
      * Limpa erros muito antigos (retenção)
      */
-    static async cleanupOlderThan(days: number): Promise<number> {
+    static async cleanupOlderThan(days: number, context?: PersistenceContext): Promise<number> {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - days);
 
-        const result = await db('batch_job_errors')
-            .where('created_at', '<', cutoffDate)
-            .del();
+        if (!context) throw new Error('Contexto explícito obrigatório');
+        const result = await context.db.transaction(async trx=>{
+            await guardTransactionalConnection(trx,context);
+            const deleted=await scoped({...context,db:trx}).where('created_at','<',cutoffDate).del().returning('id');
+            return deleted.length;
+        });
 
         return result;
     }

@@ -1,5 +1,7 @@
 # Fase B — Protocolo das operações experimentais
 
+> **Implantação de review posterior, autorizada pelo usuário:** Fase C usa fixtures em tcc_framework_test; review manual exige target/allowlist/confirm explícitos. O runner manual recusa postgres e tcc_framework_test; backup_testes é proibido por padrão, exceto opt-in estrito para o backup Docker descartável no destino backup_testes/review_data/benchmark_control (ver `../TESTE-BACKUP-LOCAL.md`, execução real pequena). Não redireciona .env e não executa campanha massiva. As menções abaixo a postgres/benchmark_control e backup preservado são desenho histórico da campanha, não autorização para executar os SQLs originais ou apontar o review manual a postgres. Contratos SQL/metodologia v3 continuam preservados. Ver `../REVIEW-FASE-C.md` e `../ROTEIRO-MANUAL-FASE-C.md`.
+
 **Versão 3 — Fase B concluída quanto ao desenho.** Nayan aprovou A/B, manteve Knex, restringiu o estudo a DML e delegou as decisões restantes ao assistente. As regras abaixo estão adotadas e podem ser revistas por nova versão. Isso não significa implementação, certificação do backup ou benchmarks concluídos.
 
 ## 1. Fonte de verdade e bancos

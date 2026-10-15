@@ -1,470 +1,98 @@
+import { resolveJobConfig, JobConfigInput, validateSqlTimeouts } from './jobConfig';
+import { TransactionalBatchJob, TransactionalSpec } from './TransactionalBatchJob';
+import { PersistenceContext, BatchJobModel } from '../db/models/BatchJobModel';
 import { EventEmitter } from 'events';
-import { BatchJobModel, BatchJobErrorModel, BatchJobLogModel } from '../db/models';
-import { db } from '../db/conection';
 import { BatchExecutor } from './BatchExecutor';
-import { JobRegistry, create as createJobInstance } from './JobRegistry';
-import {
-    JobStatus,
-    JobEventType,
-    JobEvent,
-    SystemStats,
-    JobDTO,
-    JobConfig
-} from '../types';
-
-/**
- * Configuração do JobManager
- */
-export interface JobManagerConfig {
-    maxConcurrentJobs: number;
-    pollIntervalMs?: number; // interval para buscar jobs pendentes
-    defaultJobConfig?: Partial<JobConfig>;
-}
-
-/**
- * Gerenciador central de jobs
- *
- * Responsável por:
- * - Gerenciar lifecycle de múltiplos jobs concorrentes
- * - Distribuir jobs para workers
- * - Emitir eventos do sistema
- * - Fornecer métricas e estatísticas
- */
+import { create as createJobInstance } from './JobRegistry';
+export interface JobManagerConfig { maxConcurrentJobs: number; pollIntervalMs?: number; defaultJobConfig?: JobConfigInput; }
+/** Shared manager: only explicit transactional dispatch is active. */
 export class JobManager extends EventEmitter {
     private static instance: JobManager | null = null;
-    private config: Required<JobManagerConfig>;
-    private executors: Map<number, BatchExecutor> = new Map(); // jobId -> executor
-    private workerExecutors: Map<string, BatchExecutor> = new Map(); // workerId -> executor
-    private isRunning: boolean = false;
-    private pollInterval?: NodeJS.Timeout;
-
-    private constructor(config: JobManagerConfig) {
+    private executors = new Map<number, BatchExecutor>();
+    private workerExecutors = new Map<string, BatchExecutor>();
+    private transactionalBusy = false;
+    private stopping = false;
+    private activeRuns = new Set<Promise<unknown>>();
+    private constructor(private config: JobManagerConfig) {
         super();
-        this.config = {
-            maxConcurrentJobs: config.maxConcurrentJobs || 5,
-            pollIntervalMs: config.pollIntervalMs || 5000,
-            defaultJobConfig: config.defaultJobConfig || {}
-        };
+        if (!Number.isSafeInteger(config.maxConcurrentJobs) || config.maxConcurrentJobs < 1) throw new Error('concorrência inválida');
     }
-
-    /**
-     * Singleton: obter instância única do JobManager
-     */
     static getInstance(config?: JobManagerConfig): JobManager {
-        if (!JobManager.instance) {
-            if (!config) {
-                throw new Error('JobManager não inicializado. Passe config na primeira chamada.');
-            }
-            JobManager.instance = new JobManager(config);
+        if (!this.instance) {
+            if (!config) throw new Error('JobManager não inicializado');
+            this.instance = new JobManager(config);
         }
-        return JobManager.instance;
+        return this.instance;
     }
-
-    /**
-     * Inicia o JobManager (inicia polling por jobs pendentes)
-     */
+    private track<T>(run: Promise<T>): Promise<T> {
+        this.activeRuns.add(run);
+        void run.finally(() => this.activeRuns.delete(run)).catch(() => {});
+        return run;
+    }
     async start(): Promise<void> {
-        if (this.isRunning) {
-            console.warn('[JobManager] Já está rodando');
-            return;
-        }
-
-        this.isRunning = true;
-        console.log(`[JobManager] Iniciando com maxConcurrentJobs=${this.config.maxConcurrentJobs}`);
-
-        // Iniciar polling periódico por jobs pendentes
-        this.pollInterval = setInterval(() => {
-            this.pollAndDispatch().catch(err => {
-                console.error('[JobManager] Erro no poll:', err);
-            });
-        }, this.config.pollIntervalMs);
-
-        // disparar primeira busca imediatamente
-        await this.pollAndDispatch();
-
-        // Não criar log com job_id=0 (violaria FK). Registrar localmente apenas.
-        console.log('[JobManager] iniciado');
+        if (this.transactionalBusy) throw new Error('Worker experimental exige exclusividade local');
+        throw new Error('Polling legado arquivado; use dispatch explícito');
     }
-
-    /**
-     * Para o JobManager (cancela todos os jobs em execução)
-     */
     async stop(): Promise<void> {
-        if (!this.isRunning) {
-            return;
-        }
-
-        this.isRunning = false;
-
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-            this.pollInterval = undefined;
-        }
-
-        // Cancelar todos os jobs em execução
-        const runningJobs = await BatchJobModel.findAll({ status: 'running' });
-        for (const job of runningJobs) {
-            await this.pauseJob(job.id);
-        }
-
-        console.log('[JobManager] JobManager parado');
+        this.stopping = true;
+        try {
+            for (const executor of this.workerExecutors.values()) executor.requestPause();
+            await Promise.allSettled([...this.activeRuns]);
+        } finally { this.stopping = false; }
+    }
+    runTransactional(name: string, context: PersistenceContext, spec: TransactionalSpec, options: JobConfigInput = {}) {
+        return this.track(this.executeTransactional(name, context, spec, options));
     }
 
-    /**
-     * Verifica se o JobManager está rodando
-     */
-    getIsRunning(): boolean {
-        return this.isRunning;
-    }
-
-    /**
-     * Inicia um novo job (cria registro e dispatch)
-     */
-    async startJob(
-        jobName: string,
-        options?: {
-            config?: Partial<JobConfig>;
-            scheduled_at?: Date;
-            tags?: string[];
-            priority?: number;
-            immediate?: boolean; // se true, ignora scheduled_at
+    private async executeTransactional(name: string, context: PersistenceContext, spec: TransactionalSpec, options: JobConfigInput) {
+        if (this.stopping) throw new Error('Shutdown em andamento');
+        if (this.transactionalBusy || this.executors.size) throw new Error('Worker experimental exige exclusividade local');
+        this.transactionalBusy = true; // reserve synchronously, before any await
+        const worker = `transactional-${process.pid}`;
+        try {
+            const job = createJobInstance(name);
+            if (!(job instanceof TransactionalBatchJob)) throw new Error('Job transacional não registrado');
+            job.config = resolveJobConfig(job.config, this.config.defaultJobConfig ?? {}, options);
+            validateSqlTimeouts(spec);
+            await job.validate();
+            const row = await BatchJobModel.createTransactional(name, job.config, spec, context, job.validateInitial?.bind(job));
+            const executor = new BatchExecutor(worker, context);
+            this.workerExecutors.set(worker, executor);
+            if (this.stopping) executor.requestPause();
+            await executor.run(row, job);
+            return await BatchJobModel.findById(row.id, context);
+        } finally {
+            this.workerExecutors.delete(worker);
+            this.transactionalBusy = false;
         }
-    ): Promise<JobDTO> {
-        // Verificar se job está registrado
-        if (!JobRegistry.has(jobName)) {
-            throw new Error(`Job "${jobName}" não encontrado no registry`);
+    }
+
+    /** Dispatch an explicitly requeued fixture; never recreates H or validates a clean dataset on resume. */
+    runQueuedTransactional(id: number, context: PersistenceContext) {
+        return this.track(this.executeQueuedTransactional(id, context));
+    }
+
+    private async executeQueuedTransactional(id: number, context: PersistenceContext) {
+        if (this.stopping) throw new Error('Shutdown em andamento');
+        if (this.transactionalBusy || this.executors.size) throw new Error('Worker experimental exige exclusividade local');
+        this.transactionalBusy = true;
+        const worker = `transactional-${process.pid}`;
+        try {
+            const row = await BatchJobModel.findById(id, context);
+            if (!row?.transactional_state || row.status !== 'pending') throw new Error('Job transacional não está pendente');
+            const job = createJobInstance(row.job_name, row.effective_config);
+            if (!(job instanceof TransactionalBatchJob)) throw new Error('Job transacional não registrado');
+            const executor = new BatchExecutor(worker, context);
+            this.workerExecutors.set(worker, executor);
+            if (this.stopping) executor.requestPause();
+            await executor.run(row, job);
+            return await BatchJobModel.findById(id, context);
+        } finally {
+            this.workerExecutors.delete(worker);
+            this.transactionalBusy = false;
         }
-
-        // Mesclar configuração
-        const mergedConfig: Required<JobConfig> = ({
-            ...(this.config.defaultJobConfig as any),
-            ...(options?.config as any)
-        } as unknown) as Required<JobConfig>;
-
-        // Criar registro no banco
-        const jobRow = await BatchJobModel.create(jobName, {
-            ...mergedConfig,
-            scheduled_at: options?.scheduled_at || null,
-            tags: options?.tags || [],
-            priority: options?.priority || 0
-        });
-
-        const jobDTO = BatchJobModel.toDTO(jobRow);
-
-        // Emitir evento
-        this.emitEvent({
-            type: 'job:queued',
-            jobId: Number(jobRow.id),
-            jobName: jobRow.job_name,
-            timestamp: new Date(),
-            data: jobDTO
-        });
-
-        // Se for imediato, tentar dispatch agora
-        if (options?.immediate !== false && !options?.scheduled_at) {
-            await this.pollAndDispatch();
-        }
-
-        return jobDTO;
     }
 
-    /**
-     * Pausa um job em execução
-     */
-    async pauseJob(jobId: number): Promise<JobDTO> {
-        // Parar executor local se existir
-        const executor = this.executors.get(jobId);
-        if (executor) {
-            // Notificar executor para parar (ele verifica paused status)
-            // Mas primeiro atualizar BD
-            const jobRow = await BatchJobModel.pause(jobId);
-            this.emitEvent({
-                type: 'job:paused',
-                jobId,
-                jobName: jobRow.job_name,
-                timestamp: new Date()
-            });
-            return BatchJobModel.toDTO(jobRow);
-        }
-
-        // Se não está local, apenas atualizar BD (executor remoto verá na próxima iteração)
-        const jobRow = await BatchJobModel.pause(jobId);
-        return BatchJobModel.toDTO(jobRow);
-    }
-
-    /**
-     * Retoma um job pausado
-     */
-    async resumeJob(jobId: number): Promise<JobDTO> {
-        const jobRow = await BatchJobModel.resume(jobId);
-
-        this.emitEvent({
-            type: 'job:resumed',
-            jobId,
-            jobName: jobRow.job_name,
-            timestamp: new Date()
-        });
-
-        // Tentar dispatch (pode pegar este job no próximo poll)
-        await this.pollAndDispatch();
-
-        return BatchJobModel.toDTO(jobRow);
-    }
-
-    /**
-     * Cancela (stopped) um job
-     */
-    async stopJob(jobId: number): Promise<JobDTO> {
-        const jobRow = await BatchJobModel.cancel(jobId);
-
-        const executor = this.executors.get(jobId);
-        if (executor) {
-            // Remover do mapa local (o executor vai existir até terminar o batch atual?)
-            // Melhor: não matar, apenas marcar cancelled e o loop do executor para sozinho
-        }
-
-        return BatchJobModel.toDTO(jobRow);
-    }
-
-    /**
-     * Remove um job da tabela (hard delete)
-     */
-    async deleteJob(jobId: number): Promise<void> {
-        // Não permitir deletar job em execução
-        const job = await BatchJobModel.findById(jobId);
-        if (!job) {
-            throw new Error(`Job ${jobId} não encontrado`);
-        }
-
-        if (job.status === 'running') {
-            throw new Error(`Não é possível deletar job em execução (id=${jobId}). Pause primeiro.`);
-        }
-
-        await BatchJobModel.delete(jobId);
-    }
-
-    /**
-     * Busca status atual de um job (completo)
-     */
-    async getJobStatus(jobId: number): Promise<JobDTO | null> {
-        const jobRow = await BatchJobModel.findById(jobId);
-        if (!jobRow) {
-            return null;
-        }
-        return BatchJobModel.toDTO(jobRow);
-    }
-
-    /**
-     * Lista todos os jobs com filtros
-     */
-    async listJobs(filters?: {
-        status?: JobStatus;
-        job_name?: string;
-        page?: number;
-        limit?: number;
-    }): Promise<{ jobs: JobDTO[]; total: number }> {
-        const page = filters?.page || 1;
-        const limit = filters?.limit || 50;
-        const offset = (page - 1) * limit;
-
-        const jobs = await BatchJobModel.findAll(
-            {
-                status: filters?.status,
-                job_name: filters?.job_name
-            },
-            { page, limit }
-        );
-
-        const total = await db('batch_jobs')
-            .count('id as count')
-            .first()
-            .then(r => Number(r?.count ?? 0));
-
-        return {
-            jobs: jobs.map(job => BatchJobModel.toDTO(job)),
-            total
-        };
-    }
-
-    /**
-     * Busca logs de um job
-     */
-    async getJobLogs(jobId: number, pagination?: { page: number; limit: number }): Promise<any[]> {
-        const logs = await BatchJobLogModel.findByJobId(jobId, pagination);
-        return logs;
-    }
-
-    /**
-     * Busca erros de um job
-     */
-    async getJobErrors(jobId: number, pagination?: { page: number; limit: number }): Promise<any[]> {
-        const errors = await BatchJobErrorModel.findByJobId(jobId, pagination);
-        return errors;
-    }
-
-    /**
-     * Busca estatísticas do sistema
-     */
-    async getSystemStats(): Promise<SystemStats> {
-        const jobsByStatus = await BatchJobModel.countByStatus();
-        const activeWorkers = this.workerExecutors.size;
-        const queueLength = jobsByStatus.pending;
-
-        // Calcular média de duração dos jobs completados recentemente
-        const recentJobs = await BatchJobModel.findAll(
-            { status: 'completed' },
-            { page: 1, limit: 100 }
-        );
-
-        const avgDuration = recentJobs.length > 0
-            ? recentJobs.reduce((sum, job) => {
-                const start = job.started_at ? new Date(job.started_at).getTime() : 0;
-                const end = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
-                return sum + (end - start);
-            }, 0) / recentJobs.length
-            : 0;
-
-        const totalItems = await db('batch_jobs')
-            .sum('processed_rows as total')
-            .first()
-            .then(r => r.total || 0);
-
-        const totalErrors = await db('batch_job_errors').count('id as count')
-            .first()
-            .then(r => Number(r?.count ?? 0));
-
-        return {
-            totalJobs: Object.values(jobsByStatus).reduce((a, b) => a + b, 0),
-            jobsByStatus,
-            activeWorkers,
-            queueLength,
-            avgJobDurationMs: avgDuration,
-            totalItemsProcessed: totalItems,
-            totalErrors
-        };
-    }
-
-    /**
-     * Polling: busca jobs pendentes e dispatch para workers
-     */
-    private async pollAndDispatch(): Promise<void> {
-        if (!this.isRunning) {
-            return;
-        }
-
-        const currentJobs = this.executors.size;
-
-        if (currentJobs >= this.config.maxConcurrentJobs) {
-            // Já atingiu limite de concorrência
-            return;
-        }
-
-        // Buscar próximo job pendente (já considera scheduled_at)
-        const workerId = `worker-${process.pid}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const jobRow = await BatchJobModel.findNextPending(workerId);
-
-        if (!jobRow) {
-            return; // Nenhum job pendente
-        }
-
-        // Criar executor para este job
-        await this.dispatchJob(jobRow, workerId);
-    }
-
-    /**
-     * Dispatch: inicia execução de um job em um worker
-     */
-    private async dispatchJob(jobRow: any, workerId: string): Promise<void> {
-        // Verificar se job está registrado
-        const jobClass = createJobInstance(jobRow.job_name, {
-            batchSize: jobRow.batch_size,
-            throttleMs: jobRow.throttle_ms
-        });
-
-        if (!jobClass) {
-            console.error(`[JobManager] Job "${jobRow.job_name}" não encontrado no registry`);
-            await BatchJobModel.fail(Number(jobRow.id));
-            return;
-        }
-
-        const executor = new BatchExecutor(workerId);
-
-        // Configurar listeners de eventos
-        executor.on('jobCompleted', async (jid, count) => {
-            await BatchJobModel.complete(jid);
-            this.executors.delete(jid);
-            this.workerExecutors.delete(workerId);
-
-            this.emitEvent({
-                type: 'job:completed',
-                jobId: jid,
-                jobName: jobRow.job_name,
-                timestamp: new Date(),
-                data: { itemsProcessed: count }
-            });
-        });
-
-        executor.on('jobFailed', async (jid, error) => {
-            await BatchJobModel.fail(jid);
-            this.executors.delete(jid);
-            this.workerExecutors.delete(workerId);
-
-            this.emitEvent({
-                type: 'job:failed',
-                jobId: jid,
-                jobName: jobRow.job_name,
-                timestamp: new Date(),
-                data: { error: error.message }
-            });
-        });
-
-        executor.on('jobError', async (jid, error, recordId) => {
-            await BatchJobModel.incrementErrorCount(jid);
-            this.emitEvent({
-                type: 'job:error',
-                jobId: jid,
-                jobName: jobRow.job_name,
-                timestamp: new Date(),
-                data: { error: error.message, recordId }
-            });
-        });
-
-        executor.on('jobPaused', async (jid) => {
-            this.executors.delete(jid);
-            this.workerExecutors.delete(workerId);
-        });
-
-        // Guardar referências
-        this.executors.set(Number(jobRow.id), executor);
-        this.workerExecutors.set(workerId, executor);
-
-        // Executar job em background (não await)
-        executor.run(jobRow, jobClass).catch(err => {
-            console.error(`[JobManager] Erro ao executar job ${jobRow.id}:`, err);
-        });
-
-        this.emitEvent({
-            type: 'job:started',
-            jobId: Number(jobRow.id),
-            jobName: jobRow.job_name,
-            timestamp: new Date()
-        });
-
-        await BatchJobLogModel.create(Number(jobRow.id), 'info', `Job iniciado pelo JobManager (worker=${workerId})`);
-    }
-
-    /**
-     * Emite evento do sistema (compatível com listener externo)
-     */
-    private emitEvent(event: JobEvent): void {
-        this.emit('event', event);
-        // Emitir também evento específico
-        this.emit(event.type as string, event);
-    }
-
-    /**
-     * Obtém todos os workers ativos
-     */
     getActiveWorkers(): string[] {
         return Array.from(this.workerExecutors.keys());
     }

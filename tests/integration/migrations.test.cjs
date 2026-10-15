@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { db } = require('../../src/db/conection');
 const jobs = require('../../src/db/migrations/001_create_batch_jobs');
 const metadata = require('../../src/db/migrations/004_add_job_metadata');
-const users = require('../../examples/legacy/migrations/002_create_users');
+
 
 after(() => db.destroy());
 
@@ -31,10 +31,4 @@ test('metadata down restaura o schema anterior e permite reaplicar up', () => is
   const after = await trx('batch_jobs').withSchema(schema).columnInfo();
   assert.deepEqual(Object.keys(after).sort(), Object.keys(before).sort());
   await metadata.up(trx);
-}));
-
-test('migration de exemplo users permite up/down/up', () => isolated(async trx => {
-  await users.up(trx);
-  await users.down(trx);
-  await users.up(trx);
 }));

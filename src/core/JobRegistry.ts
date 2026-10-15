@@ -1,4 +1,4 @@
-import { JobConfig } from './BatchJob';
+import { JobConfig } from '../types';
 
 /**
  * Metadados de um job registrado
