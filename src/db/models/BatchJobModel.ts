@@ -7,7 +7,7 @@ import { validateBatchSize, validateSqlTimeouts, validateThrottleMs } from '../.
 import { decimalId, TransactionalSpec } from '../../core/TransactionalBatchJob';
 import { BatchJobRow, JobConfig, JobStatus, JobDTO } from '../../types';
 
-export interface PersistenceContext { runtime?: import('../../core/runtimeConfig').RuntimeConfig; admissionSignal?: AbortSignal; db: Knex; schema: string; dataSchema?: string; clone?: {config: import('../../experiments/cloneConfig').CloneConfig; confirmation: string}; }
+export interface PersistenceContext { runtime?: import('../../core/runtimeConfig').RuntimeConfig; admissionSignal?: AbortSignal; db: Knex; schema: string; dataSchema?: string; clone?: {config: import('../../core/explicitTargetConfig').CloneConfig; confirmation: string}; }
 function table(context?: PersistenceContext) {
     if (!context || !isCanonicalIdentifier(context.schema)) throw new Error('Contexto/schema explícito obrigatório');
     return context.db('batch_jobs').withSchema(context.schema);

@@ -1,7 +1,7 @@
 require('ts-node/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {validateCloneConfig,resolveClonePassword}=require('../../src/experiments/cloneConfig');
+const {validateCloneConfig,resolveClonePassword}=require('../../src/core/explicitTargetConfig');
 function config(){return {connection:{host:'127.0.0.1',port:5432,database:'backup_testes',user:'postgres',passwordEnv:'BATCH_REVIEW_PASSWORD'},target:{database:'backup_testes',dataSchema:'review_data',controlSchema:'benchmark_control',tables:['teste_socios','teste_destino','teste_migracao']},allowlist:['backup_testes/review_data/benchmark_control'],customSchemas:true,authorizedDisposableBackup:true,maxRows:1000};}
 const target='backup_testes/review_data/benchmark_control';
 test('disposable backup requires strict opt-in and fixed private target',()=>{

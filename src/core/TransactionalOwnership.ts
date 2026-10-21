@@ -8,7 +8,7 @@ import type { PersistenceContext } from '../db/models/BatchJobModel';
 export function validatePersistenceContext(context: Pick<PersistenceContext, 'schema' | 'dataSchema' | 'clone' | 'runtime'>): string {
     if (context.runtime) return validateRuntimeTarget(context.runtime, context.schema, context.dataSchema);
     if (context.clone) {
-        const {validateCloneConfig} = require('../experiments/cloneConfig');
+        const {validateCloneConfig} = require('./explicitTargetConfig');
         const c = validateCloneConfig(context.clone.config, context.clone.confirmation);
         if (context.schema !== c.target.controlSchema || context.dataSchema !== c.target.dataSchema) throw new Error('Contexto difere do destino autorizado');
         return c.target.database;

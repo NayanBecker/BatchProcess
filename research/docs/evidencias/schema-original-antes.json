@@ -1,6 +1,0 @@
-{
-  "timestamp": "2026-10-01T00:01:46.597645+00:00",
-  "database": "postgres",
-  "canonical_schema_sha256": "91bf36aea53ee44e921238618ab65a0c51b9dafdd2215005c65c89fe083a6b28",
-  "note": "Snapshot somente do schema, sem dados; remove coment\u00e1rios e nonce restrict do pg_dump."
-}

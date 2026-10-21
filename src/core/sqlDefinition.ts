@@ -7,7 +7,7 @@ export type SqlOperation='UPDATE'|'INSERT'|'DELETE';
 export interface SqlEntry {sqlFile:string;table:string;targetTable?:string;operation?:SqlOperation;}
 export interface SqlDefinition {version:1;text:string;hash:string;operation:SqlOperation;table:string;targetTable:string;dataSchema:string;}
 type Token={kind:'word'|'identifier'|'binding'|'other';value:string;start:number;end:number};
-const invalid=():never=>{throw new ConfigurationError('SQL inválido: use um DML UPDATE/INSERT/DELETE, destino declarado e bindings :inicio e :fim; consulte src/jobs/README.md');};
+const invalid=():never=>{throw new ConfigurationError('SQL inválido: use um DML UPDATE/INSERT/DELETE, destino declarado e bindings :inicio e :fim; consulte README.md');};
 const maxBytes=1024*1024;
 /** Lexical envelope, deliberately not a SQL grammar or security sandbox. */
 function lex(text:string):Token[]{

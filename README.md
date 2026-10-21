@@ -23,7 +23,7 @@ WHERE cnpj_novo IS NULL AND cnpj_antigo IS NOT NULL
   AND id > :inicio AND id <= :fim;
 ```
 
-Declare no JSON: `"converter-cnpj": {"sqlFile":"./jobs/converter-cnpj.sql", "table":"teste_cnpj", "operation":"UPDATE"}`. Caminhos SQL são relativos **ao arquivo de configuração**, tanto em dev como em dist. `table` é a tabela paginada por `id`; para INSERT, declare também `targetTable` como destino. [Contrato e limites](src/jobs/README.md).
+Declare no JSON: `"converter-cnpj": {"sqlFile":"./jobs/converter-cnpj.sql", "table":"teste_cnpj", "operation":"UPDATE"}`. Caminhos SQL são relativos **ao arquivo de configuração**, tanto em dev como em dist. `table` é a tabela paginada por `id`; para INSERT, declare também `targetTable` como destino. Veja o contrato SQL abaixo.
 
 ## 3. Configurar um banco descartável e instalar o controle
 
@@ -87,7 +87,33 @@ Em outro terminal: `npm start -- pause ID` ou `cancel ID` solicita parada de um 
 
 Monolithic usa um commit de domínio; batch permite commits parciais. DML e checkpoint usam a mesma transação/conexão com posse de sessão. Não há retry automático, restauração, validação genérica de resultados, DDL em lotes ou garantia exactly-once para efeitos externos. SQL é de autoria **confiável do operador**, não sandbox. A validação lexical rejeita múltiplos statements, comandos transacionais/DDL, WITH e RETURNING; não prova a semântica do WHERE, fontes auxiliares, funções ou triggers. O operador deve restringir o DML ao intervalo fornecido, nunca alterar id e usar permissões mínimas. Nomes não qualificados usam search_path local seguro no dataSchema; controle continua totalmente qualificado. Preserve catálogo/destino para execuções recuperáveis; só o texto SQL fica congelado. Compatibilidade TypeScript avançada continua disponível fora do caminho padrão.
 
-## Verificação e pesquisa (opcionais)
+## Contrato SQL
+
+- Um UPDATE, INSERT ou DELETE por arquivo UTF-8 estrito, até 1 MiB. Ponto e vírgula final e comentários são permitidos. `operation` é opcional; quando declarada, deve coincidir com o SQL.
+- `:inicio` e `:fim` são valores obrigatórios fora de strings/comentários. Escreva o predicado correto `id > :inicio AND id <= :fim`; o scanner não comprova sua semântica. Casts `::TEXT`, aspas, E-strings, dollar strings e comentários aninhados são reconhecidos.
+- UPDATE/DELETE escrevem em `table`. INSERT declara `targetTable`; H/cursor/fronteira continuam baseados em `table`, a origem. DELETE calcula a fronteira antes de remover as linhas.
+- Exemplo de INSERT: `INSERT INTO destination (id, label) SELECT id, label FROM source WHERE id > :inicio AND id <= :fim;`, com `{"sqlFile":"./jobs/copy.sql","table":"source","targetTable":"destination","operation":"INSERT"}` no catálogo.
+- Nomes simples ou qualificados pelo dataSchema confirmado. A transação usa search_path local `pg_catalog, dataSchema`; controle sempre qualificado. Identificadores canônicos minúsculos ASCII, até 63 bytes; IDs positivos, únicos, int/int8 NOT NULL até BIGINT assinado. H e cursor são strings.
+- Rejeitados: múltiplos statements, transações/DDL, WITH, MERGE, RETURNING, ON CONFLICT DO UPDATE, parâmetros desconhecidos, bindings de identificadores e `?`/`$1` no código. Uma barra invertida imediatamente seguida de `?` é recusada inclusive em literais/comentários, por limitação do binder Knex; outros `?` nesses trechos são preservados.
+- Limites de configuração: batch-size até 2147483646, throttle até 2147483647 ms. São limites técnicos, não recomendações de carga.
+- A API TypeScript avançada permanece compatível em `src/core/TransactionalBatchJob.ts`; nenhum job TS experimental integra a entrega. Código personalizado não tem snapshot e deve ser preservado durante recuperação.
+
+## Estrutura da entrega
+
+```text
+src/                 CLI pública, executor, persistência e migrations internas
+jobs/                SQLs cadastráveis pelo operador
+examples/sql/        sementes sintéticas opcionais
+tests/               regressões e helpers isolados
+observability/       monitoramento opcional (não requerido pela CLI)
+README.md            guia principal e contrato SQL
+batcheman.config.example.json
+package.json / package-lock.json / tsconfig.json
+```
+
+`dist/` é gerado por build limpo; `node_modules/` contém dependências locais. `.env` e configurações locais privadas não fazem parte da entrega versionada. O laboratório, resultados, planos e documentação histórica foram preservados **fora deste repositório**, não escondidos numa nova pasta interna. A observabilidade ficou no caminho original porque há serviços com bind mounts ativos; a limpeza não reinicia nem remove esses serviços/volumes.
+
+## Verificação
 
 ```bash
 npm run build
@@ -96,6 +122,6 @@ npm run db:check
 npm run test:integration
 ```
 
-Integrações só executam no banco **tcc_framework_test**, usando schemas sintéticos próprios e limpeza restrita; db:check usa a configuração histórica de fixtures, não a config pública. Nunca a redirecione para origem/backup. [Histórico A–E, protocolo, laboratório e observabilidade opcionais](research/README.md). Grafana/Docker não são pré-requisitos do framework.
+Integrações só executam no banco **tcc_framework_test**, usando schemas sintéticos próprios e limpeza restrita; db:check usa a configuração de desenvolvimento/fixtures (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`), não a config pública. O loader existente pode carregar `.env` local apenas nesse caminho de desenvolvimento; nunca o redirecione para origem/backup. Guards de contexto explícito, posse e limites de fixtures continuam ativos. Testes dos comandos históricos foram preservados externamente e não entram na suíte desta entrega. Grafana/Docker não são pré-requisitos do framework.
 
 Manifest continua `private: true`, declaração ISC preservada; não houve decisão de nova licença, publicação npm, release ou benchmark.

@@ -1,4 +1,5 @@
-import { isCanonicalIdentifier } from '../core/identifiers';
+// Compatibility guard for explicit contexts; no laboratory CLI is shipped.
+import { isCanonicalIdentifier } from './identifiers';
 export interface CloneConfig {
     connection: {host: string; port: number; database: string; user: string; password?: string; passwordEnv?: string};
     target: {database: string; dataSchema: string; controlSchema: string; tables: string[]};

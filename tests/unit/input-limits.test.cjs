@@ -1,23 +1,8 @@
 require('ts-node/register');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const Module=require('node:module');
 const {resolveJobConfig}=require('../../src/core/jobConfig');
-const {fixtureCommand}=require('../../src/cli/fixture');
-const args=['run','--database','tcc_framework_test','--schema',`phase_c_test_${'a'.repeat(32)}`,'--mode','B','--dataset','limits-v1'];
-async function withoutDatabaseImport(fn, expected) {
-  const load=Module._load;let imports=0;
-  Module._load=function(request,...rest) {
-    if (request.includes('db/conection')) {imports++;throw Error('database imported');}
-    return load.call(this,request,...rest);
-  };
-  try {await assert.rejects(fn,expected);assert.equal(imports,0);}
-  finally {Module._load=load;}
-}
-test('SQL timeout overflow is rejected before CLI database import and API creation',async()=>{
-  for (const flag of ['--statement-timeout-ms','--lock-timeout-ms']) {
-    await withoutDatabaseImport(()=>fixtureCommand([...args,flag,'2147483648']),/Timeout de statement\/lock inválido/);
-  }
+test('SQL timeout overflow is rejected before API creation',async()=>{
   const {JobManager}=require('../../src/core/JobManager');
   const {BatchJobModel}=require('../../src/db/models');
   const {TransactionalBatchJob}=require('../../src/core/TransactionalBatchJob');
@@ -56,12 +41,12 @@ test('boundary uses INT_MAX lookahead at maximum accepted batch without allocati
   assert.equal(limit,2147483647);assert.deepEqual(result,{hi:'1',visited:'1',final:true});
   await assert.rejects(BatchIterator.boundary(()=>{throw Error('DB accessed');},{schema:'fixture',table:'items'},'0','1',2147483647),/batchSize inválido/);
 });
-test('batchSize reserves lookahead and rejects overflow before CLI DB import or API creation',async()=>{
+test('batchSize reserves lookahead and rejects overflow before API creation',async()=>{
   assert.equal(resolveJobConfig({batchSize:2147483646}).batchSize,2147483646);
   for (const batchSize of [0,-1,1.5,2147483647,2147483648,Number.MAX_SAFE_INTEGER]) {
     assert.throws(()=>resolveJobConfig({batchSize}),/batchSize inválido/);
   }
-  await withoutDatabaseImport(()=>fixtureCommand([...args,'--batch-size','2147483647']),/batchSize inválido/);
+
   const {JobManager}=require('../../src/core/JobManager');
   const {BatchJobModel}=require('../../src/db/models');
   const {TransactionalBatchJob}=require('../../src/core/TransactionalBatchJob');
