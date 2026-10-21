@@ -20,6 +20,7 @@ export interface TransactionalContext {
 }
 export interface DmlCounts { changed: string; inserted: string; deleted: string; }
 export interface TransactionalSpec {
+    sqlDefinition?: import('./sqlDefinition').SqlDefinition;
     table: string; mode: 'A' | 'B'; protocol: string; dataset: string; operation: string;
     statementTimeoutMs?: number; lockTimeoutMs?: number; eligibleOnly?: boolean;
 }

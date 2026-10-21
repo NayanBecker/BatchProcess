@@ -13,7 +13,7 @@ Origem: `public.receitafederal_quadrosocietario`. Nenhuma escrita, DDL ou exclus
 Comando utilizado na raiz do repositório (Git Bash):
 
 ```bash
-docker exec -i dbpostgres psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < experiments/setup/prepare_auxiliary_tables.sql
+docker exec -i dbpostgres psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < research/experiments/setup/prepare_auxiliary_tables.sql
 ```
 
 A transação verifica contagens das cinco cópias integrais contra a origem e da sexta contra o filtro. Divergência gera exceção antes do commit. ANALYZE das seis tabelas ocorre após o commit.

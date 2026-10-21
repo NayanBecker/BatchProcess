@@ -1,25 +1,25 @@
 'use strict';
 const {test,after}=require('node:test');const assert=require('node:assert/strict');
 const {db}=require('../../src/db/conection');
-const fixture=require('../../experiments/phase-e/fixture.cjs');
+const fixture=require('../../research/experiments/phase-e/fixture.cjs');
 after(()=>db.destroy());
 test('E: database session lock refuses a concurrent pilot and releases cleanly',async()=>{
- const {acquirePilotGuard}=require('../../experiments/phase-e/guard.cjs');
+ const {acquirePilotGuard}=require('../../research/experiments/phase-e/guard.cjs');
  const first=await acquirePilotGuard(db.client.connectionSettings);
  try{await assert.rejects(acquirePilotGuard(db.client.connectionSettings),/already running/);}
  finally{await first();}
  const next=await acquirePilotGuard(db.client.connectionSettings);await next();
 });
 test('E: write profile uses only load_counter and independently reconciles warmup plus measured writes',async()=>{
- const {runTrial}=require('../../experiments/phase-e/pilot.cjs');
- const c={...require('../../experiments/phase-e/pilot.config.json'),profile:'write',rate:30,rows:10,durationMs:200,warmupMs:50,operationOffsetMs:50,recoveryReserveMs:50};
+ const {runTrial}=require('../../research/experiments/phase-e/pilot.cjs');
+ const c={...require('../../research/experiments/phase-e/pilot.config.json'),profile:'write',rate:30,rows:10,durationMs:200,warmupMs:50,operationOffsetMs:50,recoveryReserveMs:50};
  const result=await runTrial(db,c,{scenario:'B',repetition:1,position:0,seed:c.seed});
  assert.equal(result.integrity.loadCounterTotal,result.warmup.counts.completed+result.workload.counts.completed);
  assert.equal(result.integrity.counterDivergences,0);assert.equal(result.integrity.divergences,0);
 });
 test('E: short trial records a common monotonic window and drained request evidence',async()=>{
- const {runTrial}=require('../../experiments/phase-e/pilot.cjs');
- const c={...require('../../experiments/phase-e/pilot.config.json'),rate:30,rows:10,durationMs:200,warmupMs:50,operationOffsetMs:50,recoveryReserveMs:50};
+ const {runTrial}=require('../../research/experiments/phase-e/pilot.cjs');
+ const c={...require('../../research/experiments/phase-e/pilot.config.json'),rate:30,rows:10,durationMs:200,warmupMs:50,operationOffsetMs:50,recoveryReserveMs:50};
  const result=await runTrial(db,c,{scenario:'B',repetition:1,position:0,seed:c.seed});
  assert.equal(result.workload.counts.offered,6);assert.equal(result.workload.records.length,6);
  assert.equal(result.workload.monotonicOriginMs+result.maintenance.beginMs,result.maintenance.monotonicBeginMs);
@@ -38,8 +38,8 @@ test('E: external fresh synthetic fixtures yield identical starts and independen
  await assert.rejects(fixture.withDataset(db,{rows:1001,seed:1},()=>{}),/rows/);
 });
 test('E: SQL deadline really cancels backend work, drains pool, and never updates source',async()=>{
- const {createReadWorkload}=require('../../experiments/phase-e/postgres.cjs');
- const {runLoad}=require('../../experiments/phase-e/load.cjs');
+ const {createReadWorkload}=require('../../research/experiments/phase-e/postgres.cjs');
+ const {runLoad}=require('../../research/experiments/phase-e/load.cjs');
  await fixture.withDataset(db,{rows:5,seed:1},async f=>{
   const adapter=createReadWorkload(db.client.connectionSettings,f.schema,{concurrency:1,timeoutMs:40});
   try{

@@ -23,7 +23,7 @@ const env={...process.env,BATCH_REVIEW_PASSWORD:process.env.BATCH_REVIEW_PASSWOR
 const base=['manual','--config','config/backup_testes.json','--confirm',target,'--operation',operation,'--dataset',datasets[operation]];
 function cli(command,extra=[]) {
  const args=[base[0],command,...base.slice(1),...extra];
- const r=spawnSync(process.execPath,['dist/cli/index.js',...args],{cwd:root,env,encoding:'utf8'});
+ const r=spawnSync(process.execPath,['dist/research/cli.js',...args],{cwd:root,env,encoding:'utf8'});
  if(r.status!==0){console.error(`CLI ${command} recusou a ação (exit ${r.status??1}); parar, verificar configuração/estado sem imprimir dados de domínio. Nenhum reset automático.`);process.exit(r.status??1);}
  const lines=r.stdout.trim().split(/\r?\n/);let result;
  try{result=JSON.parse(lines.at(-1));}catch{console.error('Saída CLI não reconhecida');process.exit(1);}

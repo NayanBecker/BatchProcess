@@ -1,10 +1,14 @@
 import { isCanonicalIdentifier } from './identifiers';
-import { validateCloneConfig } from '../experiments/cloneConfig';
+import {validateRuntimeTarget, assertRuntimeControl} from './runtimeConfig';
+import {isSqlEntry} from './runtimeConfig';
+import {assertSqlSnapshot} from './sqlDefinition';
 import type { Knex } from 'knex';
 import type { PersistenceContext } from '../db/models/BatchJobModel';
 
-export function validatePersistenceContext(context: Pick<PersistenceContext, 'schema' | 'dataSchema' | 'clone'>): string {
+export function validatePersistenceContext(context: Pick<PersistenceContext, 'schema' | 'dataSchema' | 'clone' | 'runtime'>): string {
+    if (context.runtime) return validateRuntimeTarget(context.runtime, context.schema, context.dataSchema);
     if (context.clone) {
+        const {validateCloneConfig} = require('../experiments/cloneConfig');
         const c = validateCloneConfig(context.clone.config, context.clone.confirmation);
         if (context.schema !== c.target.controlSchema || context.dataSchema !== c.target.dataSchema) throw new Error('Contexto difere do destino autorizado');
         return c.target.database;
@@ -14,15 +18,22 @@ export function validatePersistenceContext(context: Pick<PersistenceContext, 'sc
 }
 export function assertDurableTarget(state: import('./TransactionalBatchJob').TransactionalState, context: PersistenceContext) {
     if (!isCanonicalIdentifier(state.table)) throw new Error('identificador de tabela durável inválido');
+    if (context.runtime && context.runtime.jobs[state.operation]?.table !== state.table) throw new Error('Tabela durável difere do catálogo configurado');
+    if(context.runtime){
+        const entry=context.runtime.jobs[state.operation];
+        if(isSqlEntry(entry)) assertSqlSnapshot(state.sqlDefinition!,entry,context.dataSchema!);
+        else if(state.sqlDefinition) throw new Error('Tipo do catálogo difere do snapshot SQL');
+    } else if(state.sqlDefinition) assertSqlSnapshot(state.sqlDefinition,{sqlFile:'snapshot',table:state.table,targetTable:state.sqlDefinition.targetTable,operation:state.sqlDefinition.operation},context.dataSchema??context.schema);
     const target=state.target;
     if (!target || target.database!==validatePersistenceContext(context) || target.controlSchema!==context.schema || target.dataSchema!==(context.dataSchema ?? context.schema)) throw new Error('Destino durável difere do contexto atual');
 }
-export async function guardTransactionalConnection(db: Knex, target: string | Pick<PersistenceContext, 'schema' | 'dataSchema' | 'clone'>): Promise<void> {
+export async function guardTransactionalConnection(db: Knex, target: string | Pick<PersistenceContext, 'schema' | 'dataSchema' | 'clone' | 'runtime'>): Promise<void> {
     const context = typeof target === 'string' ? {schema:target} : target;
     const expected = validatePersistenceContext(context);
     const {rows} = await db.raw('SELECT current_database() AS database');
     if (rows[0].database !== expected) throw new Error(`Destino permitido: ${expected}`);
-    if (expected === 'backup_testes') await assertBackupSchemaOwnership(db);
+    if (context.runtime) await assertRuntimeControl(db,context.schema);
+    else if (expected === 'backup_testes') await assertBackupSchemaOwnership(db);
 }
 async function assertBackupSchemaOwnership(db: Knex, connection?: any): Promise<void> {
     const query = db.raw(`SELECT nspname FROM pg_catalog.pg_namespace
@@ -46,7 +57,8 @@ export async function withTransactionalOwnership<T>(context: PersistenceContext,
     try {
         const {rows} = await context.db.raw('SELECT current_database() AS database').connection(connection);
         if (rows[0].database !== expected) throw new Error(`Destino permitido: ${expected}`);
-        if (expected === 'backup_testes') await assertBackupSchemaOwnership(context.db, connection);
+        if (context.runtime) await context.db.transaction(async trx=>assertRuntimeControl(trx,context.schema),{connection});
+        else if (expected === 'backup_testes') await assertBackupSchemaOwnership(context.db, connection);
         const result = await context.db.raw('SELECT pg_try_advisory_lock(hashtextextended(?, 0)) AS locked', [key]).connection(connection);
         locked = result.rows[0].locked;
         if (!locked) throw new Error('Job com posse ativa');

@@ -7,7 +7,7 @@ import { validateBatchSize, validateSqlTimeouts, validateThrottleMs } from '../.
 import { decimalId, TransactionalSpec } from '../../core/TransactionalBatchJob';
 import { BatchJobRow, JobConfig, JobStatus, JobDTO } from '../../types';
 
-export interface PersistenceContext { admissionSignal?: AbortSignal; db: Knex; schema: string; dataSchema?: string; clone?: {config: import('../../experiments/cloneConfig').CloneConfig; confirmation: string}; }
+export interface PersistenceContext { runtime?: import('../../core/runtimeConfig').RuntimeConfig; admissionSignal?: AbortSignal; db: Knex; schema: string; dataSchema?: string; clone?: {config: import('../../experiments/cloneConfig').CloneConfig; confirmation: string}; }
 function table(context?: PersistenceContext) {
     if (!context || !isCanonicalIdentifier(context.schema)) throw new Error('Contexto/schema explícito obrigatório');
     return context.db('batch_jobs').withSchema(context.schema);
@@ -61,11 +61,14 @@ export class BatchJobModel {
         validatePersistenceContext(context);
         const dataSchema = context.dataSchema ?? context.schema;
         if (context.clone && !context.clone.config.target.tables.includes(spec.table)) throw new Error('Tabela não autorizada');
-        if (!isCanonicalIdentifier(spec.table) || spec.table === 'receitafederal_quadrosocietario') throw new Error('Tabela não autorizada');
+        if (context.runtime && context.runtime.jobs[name]?.table !== spec.table) throw new Error('Tabela difere do catálogo');
+        if (!isCanonicalIdentifier(spec.table) || (!context.runtime && spec.table === 'receitafederal_quadrosocietario')) throw new Error('Tabela não autorizada');
         if (!['A', 'B'].includes(spec.mode) || !spec.protocol || !spec.dataset || !spec.operation) throw new Error('Metadados experimentais inválidos');
         validateBatchSize(config.batchSize);
         validateThrottleMs(config.throttleMs);
         validateSqlTimeouts(spec);
+        if(context.runtime&&spec.operation!==name) throw new Error('Operação difere do catálogo');
+        if(context.runtime||spec.sqlDefinition) assertDurableTarget({...spec,target:{database:validatePersistenceContext(context),controlSchema:context.schema,dataSchema}} as any,context);
         return context.db.transaction(async trx => {
             await guardTransactionalConnection(trx, context);
             const key = await trx.raw(`SELECT 1 FROM pg_catalog.pg_class c
@@ -76,8 +79,10 @@ export class BatchJobModel {
                 AND a.attname = 'id' AND a.attnotnull AND a.atttypid IN (20, 23)
                 AND k.contype IN ('p', 'u') AND k.conkey = ARRAY[a.attnum]::smallint[]`, [dataSchema, spec.table]);
             if (key.rows.length === 0) throw new Error('ID exige chave única inteira NOT NULL');
-            const fixtureRows = await trx(spec.table).withSchema(dataSchema).select('id').limit(1001);
-            if (fixtureRows.length > (context.clone?.config.maxRows ?? 1000)) throw new Error('Execução experimental limitada a fixtures de 1000 registros');
+            if (!context.runtime) {
+                const fixtureRows = await trx(spec.table).withSchema(dataSchema).select('id').limit(1001);
+                if (fixtureRows.length > (context.clone?.config.maxRows ?? 1000)) throw new Error('Execução experimental limitada a fixtures de 1000 registros');
+            }
             if (validateInitial) await validateInitial(trx, dataSchema, spec.table);
             const invalid = await trx(spec.table).withSchema(dataSchema).where('id', '<=', 0).orWhereNull('id').first('id');
             if (invalid) throw new Error('IDs devem ser positivos');

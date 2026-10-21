@@ -1,3 +1,5 @@
+> Documento histórico/de pesquisa; comandos do laboratório não são o fluxo público atual. [BatCheman: primeiro uso](../../README.md).
+
 # Ambiente real — Fase A
 
 ## Escopo e instante da coleta
@@ -201,5 +203,5 @@ Get-Process | Where-Object { $_.ProcessName -match "grafana|prometheus|exporter|
 - Uma primeira tentativa de formatação do `docker ps` falhou (`wrong number of args for json`); foi corrigida usando parênteses em `json (.Label "…")` e a enumeração completa retornou com sucesso. Não houve instalação ou alteração de serviço para contornar o erro.
 - A primeira enumeração de portas usou supressão de erros; foi repetida com `-ErrorAction Stop`, contagens de endpoints e resultado vazio confirmado para as portas alvo. A conclusão de ausência local usa esta segunda leitura.
 - O repositório já estava modificado antes deste trabalho: exclusão de `src/Jobs_Dones/NormalizeUserEmailsJob.ts`; alterações em `src/db/conection.ts` e `src/db/knexfile.ts`; arquivos não rastreados `2026-09-27_172403-retomada-conclusao-tcc2.md`, `src/db/config.ts` e `tests/`. Antes da escrita deste documento, também apareceram `.gitignore` modificado e `.env.example` não rastreado. Essas mudanças concorrentes/pré-existentes não foram feitas nem revertidas por este inventário.
-- Verificação final do Git às `2026-09-30T21:05:04.858083-03:00`: este documento apareceu como não rastreado. Também apareceram novas mudanças concorrentes em `src/cli/index.ts`, duas migrações, exclusões staged de `dist/` e `src/.env`. Este inventário não editou esses arquivos nem executou comandos de stage/remoção; não há alegação de árvore limpa. A ferramenta de escrita confirmou exclusivamente `docs/AMBIENTE-FASE-A.md`.
+- Verificação final do Git às `2026-09-30T21:05:04.858083-03:00`: este documento apareceu como não rastreado. Também apareceram novas mudanças concorrentes em `src/cli/index.ts`, duas migrações, exclusões staged de `dist/` e `src/.env`. Este inventário não editou esses arquivos nem executou comandos de stage/remoção; não há alegação de árvore limpa. A ferramenta de escrita confirmou exclusivamente `research/docs/AMBIENTE-FASE-A.md`.
 - As saídas pertinentes estão transcritas/seletivamente estruturadas acima. Não se pretende certificar reprodutibilidade experimental, disponibilidade futura, ausência global de observabilidade ou limites persistentes após reinício. Repetir a coleta no início de cada rodada da Fase A.

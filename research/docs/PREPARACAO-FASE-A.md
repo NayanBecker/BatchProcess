@@ -1,3 +1,5 @@
+> Documento histórico/de pesquisa; comandos do laboratório não são o fluxo público atual. [BatCheman: primeiro uso](../../README.md).
+
 # Preparação reproduzível — Fase A
 
 ## 1. Escopo e segurança

@@ -1,3 +1,5 @@
+> Documento histórico/de pesquisa; comandos do laboratório não são o fluxo público atual. [BatCheman: primeiro uso](../../README.md).
+
 # Observabilidade — Fase D v1 concluída no escopo funcional
 
 ## Entrega D v1 — estado atual (prevalece sobre o snapshot histórico abaixo)

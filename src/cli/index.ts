@@ -1,22 +1,32 @@
 #!/usr/bin/env node
-import fs from 'fs';
-import path from 'path';
-async function main() {
-    const [command, ...args] = process.argv.slice(2);
-    try {
-        if (command === 'fixture') {
-            const {fixtureCommand}: typeof import('./fixture') = require('./fixture');
-            const result = await fixtureCommand(args);
-            console.log(typeof result === 'string' ? result : JSON.stringify(result));
-        } else if (command === 'manual') {
-            const {manualCommand}: typeof import('./manual') = require('./manual');
-            const result = await manualCommand(args);
-            console.log(typeof result === 'string' ? result : JSON.stringify(result));
-        } else if (command === 'jobs') {
-            console.log(fs.readdirSync(path.join(__dirname, '..', 'jobs')).filter(f => /\.(ts|js)$/.test(f)).map(f => path.parse(f).name).join('\n'));
-        } else if (!command || ['--help','help'].includes(command)) {
-            console.log('Batch Framework CLI\nfixture --help | manual --help | jobs\nCLI legado arquivado; todo destino deve ser explícito.');
-        } else throw new Error('Comando legado arquivado ou desconhecido; use fixture/manual com destino explícito');
-    } catch (e) { console.error((e as Error).message); process.exitCode = 1; }
+import {ConfigurationError} from '../core/runtimeConfig';
+class UsageError extends Error {}
+export const help = `BatCheman
+init [--config path]
+jobs list [--config path]
+register <name> [--mode monolithic|batch] [--batch-size N] [--throttle N] [--config path]
+run <id> [--config path]
+status|logs|errors|pause|resume|cancel|recover <id> [--config path]
+Mode/batch-size/throttle persist at register; run never changes them.
+resume requeues; run executes. recover explicitly recovers a crashed worker.`;
+export async function main(args = process.argv.slice(2)) {
+ if (!args.length || ['help','--help'].includes(args[0])) { console.log(help); return; }
+ const command=args.shift()!;
+ if (!['init','jobs','register','run','status','logs','errors','pause','resume','cancel','recover'].includes(command)) throw new UsageError('Comando desconhecido');
+ const subject=command==='init'?undefined:args.shift();
+ if(command==='jobs' && subject!=='list') throw new UsageError('Use jobs list');
+ if(command==='register' && !/^[A-Za-z][A-Za-z0-9_-]{0,99}$/.test(subject ?? '')) throw new UsageError('Nome inválido');
+ if(!['init','jobs','register'].includes(command) && (!/^[1-9][0-9]*$/.test(subject ?? '') || !Number.isSafeInteger(Number(subject)))) throw new UsageError('ID inválido');
+ const options:Record<string,string>={};
+ while(args.length){
+  const key=args.shift()!;const value=args.shift();
+  const allowed=command==='register'?['--config','--mode','--batch-size','--throttle']:['--config'];
+  if(!allowed.includes(key)||!value||options[key]) throw new UsageError('Opção inválida/duplicada');
+  options[key]=value;
+ }
+ if(options['--mode']&&!['monolithic','batch'].includes(options['--mode'])) throw new UsageError('Modo inválido');
+ for(const k of ['--batch-size','--throttle']) if(options[k]&&!/^(0|[1-9][0-9]*)$/.test(options[k])) throw new UsageError('Número inválido');
+ const {publicCommand}=require('./public');
+ console.log(JSON.stringify(await publicCommand(command,subject,options)));
 }
-void main();
+if(require.main===module) void main().catch(e=>{console.error('BatCheman: '+(e instanceof UsageError || e instanceof ConfigurationError ? e.message : 'comando falhou; confira configuração/destino e status/errors. SQL e credenciais omitidos.'));process.exitCode=1;});

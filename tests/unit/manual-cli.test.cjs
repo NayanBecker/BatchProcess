@@ -4,7 +4,7 @@ test('missing/open config and malformed manual arguments reject before pool or g
  Module._load=function(request,...args){if(request==='knex'||request.includes('db/conection')){imports++;throw Error('DB imported');}return load.call(this,request,...args);};
  try{
    await assert.rejects(manualCommand(['run']),/configuração/);
-   await assert.rejects(manualCommand(['check-config','--config','config/clone.example.json','--confirm','']),/configuração/);
+   await assert.rejects(manualCommand(['check-config','--config','research/config/clone.example.json','--confirm','']),/configuração/);
    assert.match(await manualCommand(['--help']),/clone LOCAL/);assert.equal(imports,0);
    const fs=require('node:fs');const read=fs.readFileSync;
    const config={connection:{host:'127.0.0.1',port:65534,database:'test_only_clone',user:'test_only'},target:{database:'test_only_clone',dataSchema:'test_data',controlSchema:'test_control',tables:['teste_socios','teste_destino','teste_migracao']},allowlist:['test_only_clone/test_data/test_control'],customSchemas:true,maxRows:1000};

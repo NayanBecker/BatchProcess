@@ -1,0 +1,8 @@
+{
+  "connection": {"host": "127.0.0.1", "port": 5432, "database": "batcheman_demo", "user": "batcheman", "passwordEnv": "BATCHEMAN_DB_PASSWORD"},
+  "target": {"database": "batcheman_demo", "dataSchema": "public", "controlSchema": "batcheman_control"},
+  "jobs": {
+    "normalize-label": {"sqlFile": "./jobs/normalize-label.sql", "table": "demo_items", "operation": "UPDATE"},
+    "converter-cnpj": {"sqlFile": "./jobs/converter-cnpj.sql", "table": "teste_cnpj", "operation": "UPDATE"}
+  }
+}

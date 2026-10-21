@@ -1,15 +1,15 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const load=require('../../experiments/phase-e/load.cjs');
+const load=require('../../research/experiments/phase-e/load.cjs');
 test('E: standalone pilot refuses arbitrary target/config arguments before credential loading',()=>{
  const {spawnSync}=require('node:child_process');const path=require('node:path');
- const r=spawnSync(process.execPath,['experiments/phase-e/run.cjs','--database=postgres'],{cwd:path.resolve(__dirname,'../..'),encoding:'utf8'});
- assert.equal(r.status,1);assert.match(r.stderr,/Uso: node experiments\/phase-e\/run.cjs/);
+ const r=spawnSync(process.execPath,['research/experiments/phase-e/run.cjs','--database=postgres'],{cwd:path.resolve(__dirname,'../..'),encoding:'utf8'});
+ assert.equal(r.status,1);assert.match(r.stderr,/Uso: node research\/experiments\/phase-e\/run.cjs/);
 });
 test('E: pilot plan balances order and refuses scaling beyond the small fixture contract',()=>{
- const {plan,validateConfig}=require('../../experiments/phase-e/pilot.cjs');
- const config=require('../../experiments/phase-e/pilot.config.json');
+ const {plan,validateConfig}=require('../../research/experiments/phase-e/pilot.cjs');
+ const config=require('../../research/experiments/phase-e/pilot.config.json');
  validateConfig(config);const p=plan(config);assert.equal(p.length,9);
  for(let position=0;position<3;position++)assert.equal(new Set(p.filter(t=>t.position===position).map(t=>t.scenario)).size,3);
  assert.throws(()=>validateConfig({...config,rows:1001}));assert.deepEqual(plan(config),p);
@@ -17,7 +17,7 @@ test('E: pilot plan balances order and refuses scaling beyond the small fixture 
  assert.throws(()=>validateConfig({...config,profiles:[]}));
 });
 test('E: metrics expose measured seconds and counters, bounded labels and no experiment IDs',async()=>{
- const {createMetrics}=require('../../experiments/phase-e/metrics.cjs');const metrics=createMetrics();
+ const {createMetrics}=require('../../research/experiments/phase-e/metrics.cjs');const metrics=createMetrics();
  const server=metrics.server;await new Promise(r=>server.listen(0,'127.0.0.1',r));
  try{metrics.offer('A');metrics.record('A',{outcome:'completed',latencyMs:25});metrics.offer('A');metrics.record('A',{outcome:'timeouts',latencyMs:500});
  const text=await(await fetch(`http://127.0.0.1:${server.address().port}/metrics`)).text();
@@ -28,7 +28,7 @@ test('E: metrics expose measured seconds and counters, bounded labels and no exp
  }finally{await new Promise(r=>server.close(r));}
 });
 test('E: metrics keep read and write populations separate',()=>{
- const m=require('../../experiments/phase-e/metrics.cjs').createMetrics();
+ const m=require('../../research/experiments/phase-e/metrics.cjs').createMetrics();
  m.offer('A','write');m.record('A',{outcome:'completed',latencyMs:10},'write');
  assert.match(m.render(),/tcc_load_offered_total\{scenario="A",profile="write"\} 1/);
  assert.match(m.render(),/tcc_load_offered_total\{scenario="A",profile="read"\} 0/);

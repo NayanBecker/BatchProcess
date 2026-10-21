@@ -1,0 +1,7 @@
+{
+  "connection": {"host": "", "port": null, "database": "", "user": ""},
+  "target": {"database": "", "dataSchema": "", "controlSchema": "", "tables": ["teste_socios", "teste_destino", "teste_migracao"]},
+  "allowlist": [],
+  "customSchemas": false,
+  "maxRows": 1000
+}

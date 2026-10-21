@@ -2,8 +2,8 @@
 // Standalone research procedure, deliberately outside src/CLI framework.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {spawnSync}=require('node:child_process');
-if(process.argv.length!==2){console.error('Uso: node experiments/phase-e/run.cjs (sem opções de destino)');process.exit(1);}
-process.chdir(path.resolve(__dirname,'../..'));
+if(process.argv.length!==2){console.error('Uso: node research/experiments/phase-e/run.cjs (sem opções de destino)');process.exit(1);}
+process.chdir(path.resolve(__dirname,'../../..'));
 const {plan,runTrial,validateConfig}=require('./pilot.cjs');
 const {createMetrics}=require('./metrics.cjs');
 const {sleep}=require('./load.cjs');
@@ -18,7 +18,7 @@ async function monitorReady(){
  const id=command('docker',['ps','--filter','label=com.docker.compose.project=tcc-observability','--filter','label=com.docker.compose.service=prometheus','--format','{{.ID}}']);
  if(!/^[a-f0-9]{12,64}$/.test(id))throw Error('Prometheus identity not unique');
  command('docker',['kill','--signal','HUP',id]);
- await waitUntil(async()=>{const t=await get('http://127.0.0.1:9090/api/v1/targets');require('../../observability/targets.cjs').checkTargets(t.data.activeTargets);return t.data.activeTargets.find(t=>t.labels.job==='tcc-phase-e-load'&&t.health==='up'&&t.scrapeUrl==='http://host.docker.internal:9465/metrics');});
+ await waitUntil(async()=>{const t=await get('http://127.0.0.1:9090/api/v1/targets');require('../../../observability/targets.cjs').checkTargets(t.data.activeTargets);return t.data.activeTargets.find(t=>t.labels.job==='tcc-phase-e-load'&&t.health==='up'&&t.scrapeUrl==='http://host.docker.internal:9465/metrics');});
  const password=fs.readFileSync('observability/local/grafana-password','utf8');const headers={Authorization:'Basic '+Buffer.from('admin:'+password).toString('base64')};
  const expected=JSON.parse(fs.readFileSync('observability/grafana/dashboards/phase-e.json','utf8'));
  const dashboard=await waitUntil(async()=>{const d=await get('http://127.0.0.1:3000/api/dashboards/uid/tcc-phase-e',headers);return d.dashboard?.panels.length===expected.panels.length?d.dashboard:null;});
@@ -43,8 +43,8 @@ async function exportMonitoring(dir,start,end,ready){
 }
 async function main(){
  validateConfig(c);
- require('../../dist/db/config');
- const {databaseConfig}=require('../../dist/db/config');const config=databaseConfig();
+ require('../../../dist/db/config');
+ const {databaseConfig}=require('../../../dist/db/config');const config=databaseConfig();
  if(config.connection.database!=='tcc_framework_test')throw Error('Database configuration refused');
  const knex=require('knex');const releaseGuard=await require('./guard.cjs').acquirePilotGuard(config.connection);
  const db=knex({...config,pool:{min:0,max:3,afterCreate:(client,done)=>{client.query('SELECT current_database() AS database').then(r=>done(r.rows[0].database==='tcc_framework_test'?null:Error('Destino real recusado'),client),e=>done(e,client));}},acquireConnectionTimeout:4000});
@@ -54,7 +54,7 @@ async function main(){
   await new Promise((resolve,reject)=>{metrics.server.once('error',reject);metrics.server.listen(c.metricsPort,'127.0.0.1',resolve);});listening=true;
   const ready=await monitorReady();
   dir=path.resolve('experiments/results/phase-e-'+new Date().toISOString().replaceAll(/[:.]/g,'-')+'-'+require('node:crypto').randomBytes(3).toString('hex'));fs.mkdirSync(dir,{recursive:true});
-  const files=[...fs.readdirSync(__dirname).filter(n=>/\.(cjs|json)$/.test(n)).map(n=>'experiments/phase-e/'+n),...command('git',['ls-files','src']).split(/\r?\n/).filter(Boolean),'package-lock.json','tsconfig.json','tests/helpers/phase-c-db.cjs','observability/prometheus/prometheus.yml','observability/grafana/dashboards/phase-e.json'];
+  const files=[...fs.readdirSync(__dirname).filter(n=>/\.(cjs|json)$/.test(n)).map(n=>'research/experiments/phase-e/'+n),...command('git',['ls-files','src']).split(/\r?\n/).filter(Boolean),'package-lock.json','tsconfig.json','tests/helpers/phase-c-db.cjs','observability/prometheus/prometheus.yml','observability/grafana/dashboards/phase-e.json'];
   const checksums=Object.fromEntries(files.map(n=>[n,require('node:crypto').createHash('sha256').update(fs.readFileSync(n)).digest('hex')]));
   const settings=(await db.raw("SELECT name,setting,unit FROM pg_settings WHERE name IN ('server_version','shared_buffers','work_mem','max_connections','synchronous_commit','fsync','full_page_writes','track_io_timing','autovacuum','checkpoint_timeout','default_transaction_isolation') ORDER BY name")).rows;
   manifest={version:1,kind:'small-functional-pilot-not-campaign',status:'running',startedAt:new Date().toISOString(),gitRevision:command('git',['rev-parse','HEAD']),worktreeDirty:command('git',['status','--porcelain']).length>0,checksums,resultDirectory:dir,config:c,plan:c.profiles.flatMap(profile=>plan({...c,profile}).map(t=>({...t,profile}))),database:'tcc_framework_test',postgresVersion:actual.rows[0].version,settings,runtime:{node:process.version,platform:process.platform,arch:process.arch,cpuCount:require('node:os').cpus().length,totalMemoryBytes:require('node:os').totalmem()},limits:{rowsMaximum:1000,concurrencyMaximum:8,profiles:c.profiles,statementTimeoutMs:c.timeoutMs,maintenanceStatementTimeoutMs:3000,maintenanceLockTimeoutMs:1000,queue:c.maxQueue},cachePolicy:'Fresh logical schema and ANALYZE then identical warmup. Physical/cache equality NOT guaranteed; no cache flush, no autovacuum/checkpoint manipulation.',trials:[],limitations:['EXP-06 synthetic small only','read and write measured separately; write updates load_counter only','3 cyclic repetitions, one batch size; matrix insufficient for Phase E closure','executor and load share Node process: batch CPU/RSS includes concurrent generator work, not isolated maintenance resources','executor interval is not DML-only protocol timer','infra exporter monitors historical backup; do not attribute its DB metrics to this fixture'],measurementStartUnix:Date.now()/1000};

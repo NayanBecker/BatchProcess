@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { TransactionalBatchJob, TransactionalState, decimalId } from './TransactionalBatchJob';
 import { PersistenceContext } from '../db/models/BatchJobModel';
 import { BatchIterator } from './BatchIterator';
+import {SqlJob} from './SqlJob';
 export class BatchExecutor extends EventEmitter {
     private workerId: string;
     private pauseRequested = false;
@@ -89,7 +90,8 @@ export class BatchExecutor extends EventEmitter {
                     const boundary = state.mode === 'A'
                         ? {hi: state.highWater, visited: String((await trx(state.table).withSchema(context.dataSchema ?? context.schema).where('id','>',state.cursor).where('id','<=',state.highWater).modify(q => { if (state.eligibleOnly) q.where({migrado:true}); }).count('* as n').first()).n), final: true}
                         : await BatchIterator.boundary(trx, {schema: context.dataSchema ?? context.schema, table: state.table, eligibleOnly: state.eligibleOnly}, state.cursor, state.highWater, config.batchSize);
-                    const counts = boundary.visited === '0' ? {changed:'0',inserted:'0',deleted:'0'} : await job.executeBatch({
+                    const effectiveJob=state.sqlDefinition?new SqlJob(state.sqlDefinition,config):job;
+                    const counts = boundary.visited === '0' ? {changed:'0',inserted:'0',deleted:'0'} : await effectiveJob.executeBatch({
                         trx, schema: context.dataSchema ?? context.schema, table: state.table, lo: state.cursor, hi: boundary.hi,
                         highWater: state.highWater, jobId: jobRow.id, config
                     });

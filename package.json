@@ -1,5 +1,5 @@
 {
-  "name": "processamento-em-lote-monorepo",
+  "name": "batcheman",
   "version": "1.0.0",
   "description": "Sistema de processamento em lote via CLI",
   "license": "ISC",

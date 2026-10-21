@@ -7,7 +7,7 @@ const {db}=require('../../src/db/conection');
 const {withFixture}=require('../helpers/phase-c-db.cjs');
 after(()=>db.destroy());
 async function cli(compiled,args){
-  const prefix=compiled?['dist/cli/index.js']:['-r','ts-node/register','src/cli/index.ts'];
+  const prefix=compiled?['dist/research/cli.js']:['-r','ts-node/register','src/research/cli.ts'];
   return exec(process.execPath,[...prefix,'fixture',...args],{cwd:process.cwd(),timeout:30000});
 }
 test('CLI dev e compilada recusam ferramentas de resultado retiradas',async()=>{

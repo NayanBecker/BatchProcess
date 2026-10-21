@@ -1,3 +1,5 @@
+> Pesquisa: protocolo canônico metodológico, não guia da CLI pública. [BatCheman: primeiro uso](../../../README.md).
+
 # Fase B — Protocolo das operações experimentais
 
 > **Implantação de review posterior, autorizada pelo usuário:** Fase C usa fixtures em tcc_framework_test; review manual exige target/allowlist/confirm explícitos. O runner manual recusa postgres e tcc_framework_test; backup_testes é proibido por padrão, exceto opt-in estrito para o backup Docker descartável no destino backup_testes/review_data/benchmark_control (ver `../TESTE-BACKUP-LOCAL.md`, execução real pequena). Não redireciona .env e não executa campanha massiva. As menções abaixo a postgres/benchmark_control e backup preservado são desenho histórico da campanha, não autorização para executar os SQLs originais ou apontar o review manual a postgres. Contratos SQL/metodologia v3 continuam preservados. Ver `../REVIEW-FASE-C.md` e `../ROTEIRO-MANUAL-FASE-C.md`.
@@ -6,7 +8,7 @@
 
 ## 1. Fonte de verdade e bancos
 
-- Operações DML: EXP-01 a EXP-09. Dez arquivos originais permanecem arquivados em `experiments/operations/`; EXP-10 é somente referência histórica, fora dos benchmarks.
+- Operações DML: EXP-01 a EXP-09. Dez arquivos originais permanecem arquivados em `research/experiments/operations/`; EXP-10 é somente referência histórica, fora dos benchmarks.
 - Benchmark: banco **postgres**, schema **public**, somente tabelas `teste_*` autorizadas.
 - Origem preservada: `public.receitafederal_quadrosocietario`, usada somente para leitura/preparação.
 - Desenvolvimento, fixtures pequenas e testes internos: **tcc_framework_test**.
@@ -16,7 +18,7 @@
 
 ## 2. Dataset e restauração
 
-As seis tabelas auxiliares foram preparadas anteriormente com cópia integral da origem. O registro da preparação informa 17.447.222 registros por tabela e validação de contagens antes do commit; isso não é nova contagem nesta revisão. Evidências e limitações: `experiments/setup/README.md`.
+As seis tabelas auxiliares foram preparadas anteriormente com cópia integral da origem. O registro da preparação informa 17.447.222 registros por tabela e validação de contagens antes do commit; isso não é nova contagem nesta revisão. Evidências e limitações: `research/experiments/setup/README.md`.
 
 Não há seed sintética: identificar a versão do snapshot da origem, contagens, min/max de IDs e fingerprint das colunas relevantes. Antes de cada execução, restaurar **schema e dados** iniciais da operação; não encadear as dez migrations sobre a mesma base alterada. EXP-02, 05, 06 e 08 compartilham teste_socios; EXP-04 e 07 compartilham teste_qualificacoes.
 

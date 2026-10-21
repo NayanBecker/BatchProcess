@@ -1,3 +1,5 @@
+> Documento histórico/de pesquisa; comandos do laboratório não são o fluxo público atual. [BatCheman: primeiro uso](../../README.md).
+
 # Evidências da entrega Fase C — regressão após correções da revisão
 
 > **HISTÓRICO SUPERADO quanto à superfície validate/restore e contagens.** Essas ferramentas de resultados/reset foram retiradas da aplicação. STATUS-TCC.md registra a regressão atual; conclusão/falha, logs/errors e segurança operacional permanecem no framework. Não executar comandos antigos deste relato.
@@ -58,4 +60,4 @@ Ajustados: cloneConfig/reviewRunner; TransactionalOwnership/BatchIterator/BatchE
 - Review manual restrito a até 1000 linhas/tabela e schemas privados controlados. Não usar tabelas de milhões nem remover limites para campanha.
 - Certificação do backup real, clone real, observabilidade e benchmarks permanecem posteriores.
 
-Fontes para review: docs/REVIEW-FASE-C.md, docs/ROTEIRO-MANUAL-FASE-C.md, docs/VALIDACAO-FASE-C.md e STATUS-TCC.md.
+Fontes para review: research/docs/REVIEW-FASE-C.md, research/docs/ROTEIRO-MANUAL-FASE-C.md, research/docs/VALIDACAO-FASE-C.md e STATUS-TCC.md.

@@ -1,3 +1,5 @@
+> Documento histórico/de pesquisa; comandos do laboratório não são o fluxo público atual. [BatCheman: primeiro uso](../../README.md).
+
 # Validação da Fase A — resultados observados
 
 **Encerramento técnico: 30/09/2026 (UTC−03:00)**; evidências JSON usam UTC e, portanto, aparecem como 01/10/2026 após 21h locais. Escopo: preparação, instalação e consultas básicas; não validação experimental do framework.

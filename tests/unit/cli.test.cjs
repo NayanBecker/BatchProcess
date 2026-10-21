@@ -5,7 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
 
 function cli(...args) {
-  return spawnSync(process.execPath, ['-r', 'ts-node/register', 'src/cli/index.ts', ...args], {
+  return spawnSync(process.execPath, ['-r', 'ts-node/register', 'src/research/cli.ts', ...args], {
     cwd: root, env: { ...process.env, DB_NAME: '', DB_USER: '', DB_PASSWORD: '' },
     encoding: 'utf8', timeout: 20000
   });

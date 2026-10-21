@@ -4,6 +4,8 @@ import { PersistenceContext, BatchJobModel } from '../db/models/BatchJobModel';
 import { EventEmitter } from 'events';
 import { BatchExecutor } from './BatchExecutor';
 import { create as createJobInstance } from './JobRegistry';
+import {SqlJob} from './SqlJob';
+import {assertDurableTarget} from './TransactionalOwnership';
 export interface JobManagerConfig { maxConcurrentJobs: number; pollIntervalMs?: number; defaultJobConfig?: JobConfigInput; }
 /** Shared manager: only explicit transactional dispatch is active. */
 export class JobManager extends EventEmitter {
@@ -80,7 +82,8 @@ export class JobManager extends EventEmitter {
         try {
             const row = await BatchJobModel.findById(id, context);
             if (!row?.transactional_state || row.status !== 'pending') throw new Error('Job transacional não está pendente');
-            const job = createJobInstance(row.job_name, row.effective_config);
+            assertDurableTarget(row.transactional_state,context);
+            const job = row.transactional_state.sqlDefinition ? new SqlJob(row.transactional_state.sqlDefinition,row.effective_config) : createJobInstance(row.job_name, row.effective_config);
             if (!(job instanceof TransactionalBatchJob)) throw new Error('Job transacional não registrado');
             const executor = new BatchExecutor(worker, context);
             this.workerExecutors.set(worker, executor);

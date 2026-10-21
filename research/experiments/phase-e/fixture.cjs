@@ -1,6 +1,6 @@
 'use strict';
 const {createHash}=require('node:crypto');
-const {withFixture,assertTestDatabase}=require('../../tests/helpers/phase-c-db.cjs');
+const {withFixture,assertTestDatabase}=require('../../../tests/helpers/phase-c-db.cjs');
 function assertSchema(schema){if(!/^phase_c_test_[a-f0-9]{32}$/.test(schema))throw Error('Schema fora da allowlist');}
 function sourceFingerprint(rows){return createHash('sha256').update(JSON.stringify(rows.map(r=>[String(r.id),r.nome]))).digest('hex');}
 async function withDataset(db,options,work){
@@ -11,7 +11,7 @@ async function withDataset(db,options,work){
   await db.transaction(async trx=>{
    assertTestDatabase((await trx.raw('SELECT current_database() AS database')).rows[0].database);
    await trx.raw('SET LOCAL search_path TO ??',[schema]);
-   for(const n of ['001_create_batch_jobs','002_create_batch_job_errors','003_create_batch_job_logs','004_add_job_metadata','005_add_transactional_state'])await require('../../dist/db/migrations/'+n).up(trx);
+   for(const n of ['001_create_batch_jobs','002_create_batch_job_errors','003_create_batch_job_logs','004_add_job_metadata','005_add_transactional_state'])await require('../../../dist/db/migrations/'+n).up(trx);
    await trx.schema.withSchema(schema).createTable('source',t=>{t.bigInteger('id').primary();t.text('nome');t.text('nome_normalizado');t.boolean('processado').notNullable().defaultTo(false);t.integer('load_counter').notNullable().defaultTo(0);});
    const data=Array.from({length:options.rows},(_,i)=>({id:String(i+1),nome:i%11===0?null:`  synth_${options.seed}_${i}  `}));
    await trx('source').withSchema(schema).insert(data);await trx.raw('ANALYZE ??.source',[schema]);
@@ -44,9 +44,9 @@ async function integrity(db,f,scenario,profile='read',records=[]){
 async function prepareOperation(db,schema,scenario,batchSize){
  assertSchema(schema);if(!['control','A','B'].includes(scenario))throw Error('Cenário inválido');
  if(scenario==='control')return null;
- const {BatchExecutor}=require('../../dist/core/BatchExecutor');
- const {BatchJobModel}=require('../../dist/db/models');
- const {NormalizeSocioNamesJob}=require('../../dist/jobs/NormalizeSocioNamesJob');
+ const {BatchExecutor}=require('../../../dist/core/BatchExecutor');
+ const {BatchJobModel}=require('../../../dist/db/models');
+ const {NormalizeSocioNamesJob}=require('../../../dist/jobs/NormalizeSocioNamesJob');
  const context={db,schema},job=new NormalizeSocioNamesJob({batchSize,throttleMs:0});
  const row=await BatchJobModel.createTransactional('phase-e-exp06',job.config,{table:'source',mode:scenario,operation:'EXP-06',dataset:'synthetic-exp06-v1',protocol:'3+E1',statementTimeoutMs:3000,lockTimeoutMs:1000},context);
  return {effectiveConfig:row.effective_config,run:()=>new BatchExecutor('phase-e',context).run(row,job),evidence:async()=>{

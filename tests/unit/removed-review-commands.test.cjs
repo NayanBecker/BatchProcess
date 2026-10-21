@@ -22,7 +22,7 @@ test('removed result tools reject at CLI/API boundary before database imports or
    const result=spawnSync(process.execPath,['scripts/backup-review.cjs',action],{encoding:'utf8'});
    assert.equal(result.status,1);assert.match(result.stderr,/retirad/i);
    for(const command of ['manual','fixture']) {
-    const compiled=spawnSync(process.execPath,['dist/cli/index.js',command,action],{encoding:'utf8',env:{...process.env,DB_NAME:'',DB_USER:'',DB_PASSWORD:''}});
+    const compiled=spawnSync(process.execPath,['dist/research/cli.js',command,action],{encoding:'utf8',env:{...process.env,DB_NAME:'',DB_USER:'',DB_PASSWORD:''}});
     assert.equal(compiled.status,1);assert.match(compiled.stderr,/retirad/i);
    }
   }

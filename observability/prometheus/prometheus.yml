@@ -8,6 +8,11 @@ scrape_configs:
   - job_name: tcc-committed
     static_configs:
       - targets: ['host.docker.internal:9464']
+  - job_name: tcc-phase-e-load
+    scrape_interval: 1s
+    scrape_timeout: 800ms
+    static_configs:
+      - targets: ['host.docker.internal:9465']
   - job_name: postgres
     static_configs:
       - targets: ['postgres-exporter:9187']
