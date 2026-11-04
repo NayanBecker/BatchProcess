@@ -1,0 +1,72 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');
+test('operational dashboard is small, bounded and keeps the existing URL',()=>{
+ const d=require('./grafana/dashboards/tcc.json');
+ assert.equal(d.uid,'tcc-phase-d');assert.equal(d.title,'BatCheman — Banco e jobs');
+ assert.equal(d.refresh,'30s');assert.ok(d.panels.length<=12);
+ assert.equal(d.time.from,'now-1h');
+ assert.ok(d.panels.some(p=>p.id===8&&p.type==='table'));
+ for(const p of d.panels){assert.ok(p.maxDataPoints<=600);for(const t of p.targets||[])assert.doesNotMatch(t.expr||'',/rate\((tcc_|batcheman_)/);}
+ assert.ok(d.panels.filter(p=>p.targets.some(t=>(t.expr||'').includes('container_'))).every(p=>p.targets.every(t=>(t.expr||'').includes('name="dbpostgres"'))));
+});
+test('jobs are a single SQL result with one row per ID in descending numeric order',()=>{
+ const p=require('./grafana/dashboards/tcc.json').panels.find(p=>p.id===8);
+ assert.equal(p.type,'table');assert.equal(p.datasource.uid,'batcheman-postgres');
+ assert.equal(p.targets.length,1);assert.equal(p.targets[0].format,'table');
+ assert.match(p.targets[0].rawSql,/FROM "batcheman_control"\."batch_jobs"/);
+ assert.match(p.targets[0].rawSql,/ORDER BY id DESC\s+LIMIT 200/);
+ for(const column of ['ID','Job','Estado','Modo','Visitados','Alterados','Commits','Erros'])assert.ok(p.targets[0].rawSql.includes('AS "'+column+'"'));
+ assert.ok(!p.transformations?.length,'must not split metrics into selectable datasets');
+ assert.deepEqual(p.options.sortBy,[{displayName:'ID',desc:true}]);
+ assert.equal(p.options.enablePagination,false);assert.equal(p.maxDataPoints,200);
+ assert.doesNotMatch(p.targets[0].rawSql,/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|sqlDefinition)\b/i);
+});
+test('live SQL table is bounded and distinguishes execution from actual lock wait',()=>{
+ const d=require('./grafana/dashboards/tcc.json');
+ const p=d.panels.find(p=>p.id===11&&p.datasource.uid==='batcheman-postgres');
+ assert.ok(p,'missing live PostgreSQL table');
+ assert.equal(d.panels.length,11);assert.equal(p.type,'table');assert.equal(p.gridPos.y,26);
+ const t=p.targets[0];assert.equal(t.format,'table');const sql=t.rawSql;
+ assert.match(sql,/WITH selected AS MATERIALIZED/);assert.match(sql,/LIMIT 10/);
+ assert.match(sql,/ORDER BY query_start DESC NULLS LAST, pid/);
+ assert.match(sql,/ORDER BY s.query_start DESC NULLS LAST, s.pid/);
+ assert.match(sql,/s.query_start AS "Início da consulta"/);
+ assert.match(p.title,/Top 10/);assert.equal(p.maxDataPoints,10);
+ assert.match(sql,/datname = current_database\(\)/);assert.match(sql,/pid <> pg_backend_pid\(\)/);
+ assert.match(sql,/tcc_observability_readonly/);assert.match(sql,/grafana/i);
+ assert.match(sql,/idle in transaction/);assert.match(sql,/wait_event_type = 'Lock'/);
+ assert.match(sql,/pg_blocking_pids/);assert.match(sql,/NOT l.granted/);assert.match(sql,/min\(l.waitstart\)/);
+ assert.match(sql,/CASE WHEN s.state = 'active' THEN/);assert.match(sql,/left\(s.query, 500\)/);
+ assert.doesNotMatch(sql,/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|pg_cancel_backend|pg_terminate_backend)\b/i);
+ assert.match(p.description,/sensíveis/);assert.match(p.description,/30s/);
+});
+test('visited records are one current bar per execution, not samples over time',()=>{
+ const p=require('./grafana/dashboards/tcc.json').panels.find(p=>p.id===9);
+ assert.equal(p.type,'barchart');assert.equal(p.options.xField,'Job');
+ assert.equal(p.options.orientation,'horizontal');
+ assert.equal(p.targets[0].instant,true);assert.equal(p.targets[0].range,false);
+ assert.equal(p.targets[0].format,'table');
+ assert.match(p.targets[0].expr,/label_join\(batcheman_job_visited/);
+ assert.match(p.targets[0].expr,/"job_name", "job_id"/);
+ assert.equal(p.transformations[0].id,'labelsToFields');
+ assert.equal(p.transformations[1].options.renameByName.execucao,'Job');
+ assert.equal(p.transformations[1].options.renameByName.batcheman_job_visited,'Visitados');
+ assert.equal(p.transformations[1].options.excludeByName.Time,true);
+});
+test('job execution lines begin at persisted start and stop at finish',()=>{
+ const p=require('./grafana/dashboards/tcc.json').panels.find(p=>p.id===10);
+ assert.equal(p.type,'timeseries');assert.equal(p.datasource.uid,'batcheman-postgres');
+ assert.match(p.title,/Execução dos jobs/);
+ assert.equal(p.targets[0].format,'time_series');assert.equal(p.timeFrom,'7d');
+ assert.match(p.targets[0].rawSql,/started_at IS NOT NULL/);
+ assert.match(p.targets[0].rawSql,/WHEN status = 'running' THEN statement_timestamp\(\)/);
+ assert.match(p.targets[0].rawSql,/\(j.started_at, 0\.0/);
+ assert.match(p.targets[0].rawSql,/extract\(epoch FROM j.finished_at - j.started_at\)/);
+ assert.match(p.targets[0].rawSql,/'Job #' \|\| j.id/);
+ assert.match(p.targets[0].rawSql,/"batcheman_control"\."batch_jobs"/);
+ assert.match(p.targets[0].rawSql,/ORDER BY.*status = 'running'.*id DESC/s);
+ assert.match(p.targets[0].rawSql,/LIMIT 20/);
+ assert.doesNotMatch(p.targets[0].rawSql,/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|COALESCE)\b/i);
+ assert.equal(p.fieldConfig.defaults.custom.spanNulls,true);
+ assert.equal(p.fieldConfig.defaults.custom.showPoints,'always');
+ assert.ok(p.options.legend.calcs.includes('lastNotNull'));
+});

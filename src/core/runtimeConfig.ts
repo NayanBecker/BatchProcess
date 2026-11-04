@@ -1,4 +1,6 @@
 import {readFileSync} from 'fs';
+import path from 'node:path';
+import {parseEnv} from 'node:util';
 import {isCanonicalIdentifier as identifier} from './identifiers';
 export class ConfigurationError extends Error {}
 export type RuntimeJob = import('./sqlDefinition').SqlEntry | {module:string;export:string;table:string};
@@ -30,6 +32,23 @@ export function readRuntimeConfig(file='batcheman.config.local.json'):RuntimeCon
  let parsed:RuntimeConfig;
  try{parsed=JSON.parse(text);}catch{throw new ConfigurationError('JSON de configuração inválido');}
  return validateRuntimeConfig(parsed);
+}
+export function readRuntimePassword(runtime:RuntimeConfig,file='batcheman.config.local.json'):string{
+ const name=runtime.connection.passwordEnv;
+ let password=process.env[name];
+ if(password===undefined){
+  let text:string|undefined;
+  try{text=readFileSync(path.join(path.dirname(path.resolve(file)),'.env'),'utf8');}
+  catch(error){
+   if((error as NodeJS.ErrnoException).code!=='ENOENT') throw new ConfigurationError('Não foi possível ler o arquivo .env da configuração');
+  }
+  if(text!==undefined){
+   try{password=parseEnv(text)[name];}
+   catch{throw new ConfigurationError('Arquivo .env inválido');}
+  }
+ }
+ if(!password) throw new ConfigurationError('Variável indicada em passwordEnv ausente/vazia; defina-a no ambiente ou no arquivo .env ao lado da configuração');
+ return password;
 }
 export function validateRuntimeTarget(runtime:RuntimeConfig,schema:string,dataSchema?:string):string{
  validateRuntimeConfig(runtime);

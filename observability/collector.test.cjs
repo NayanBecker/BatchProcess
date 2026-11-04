@@ -12,6 +12,23 @@ test('versioned retained metrics preserve missing history, bound labels and reje
  const rows=[{id:777,status:'completed',transactional_state:{...state,dataset:'private',observability:observation}}];
  const a=render(rows);assert.equal(a,render(rows));assert.match(a,/tcc_batch_retained_unresolved\{operation="EXP-06",mode="B"\} 0/);assert.doesNotMatch(a,/777|private|dataset=|jobId=/);assert.throws(()=>render([{status:'completed',transactional_state:{...state,observability:{...observation,attempts:0}}}]),/Inconsistent/);
 });
+test('current SQL jobs are included with bounded individual identity and committed progress',()=>{
+ const state={operation:'converter-cnpj',mode:'B',visited:'10000',changed:'9123',inserted:'0',deleted:'0',commits:'1',sqlDefinition:{text:'SECRET SQL',hash:'SECRET HASH'}};
+ const rows=Array.from({length:80},(_,i)=>({id:i+1,job_name:'converter-cnpj',status:i===1?'running':'completed',error_count:0,transactional_state:state}));
+ const a=render(rows);
+ assert.match(a,/tcc_committed_visited\{operation="converter-cnpj",mode="B"\} 800000/);
+ assert.match(a,/batcheman_job_visited\{job_id="2",job_name="converter-cnpj",status="running",mode="B"\} 10000/);
+ assert.equal((a.match(/^batcheman_job_visited\{/gm)||[]).length,20);
+ assert.doesNotMatch(a,/SECRET|sqlDefinition|hash=|cursor|percent/);
+ assert.doesNotMatch(render([{...rows[0],transactional_state:{...state,operation:'bad"\\nlabel'}}]),/bad/);
+ assert.doesNotMatch(render([{...rows[0],transactional_state:{...state,operation:'x'.repeat(101)}}]),/operation="x/);
+ assert.equal(a,render([...rows].reverse()));
+});
+test('malformed durable errors are skipped instead of breaking every valid job',()=>{
+ const state={operation:'user-job',mode:'B',visited:'5',changed:'5',inserted:'0',deleted:'0',commits:'1'};
+ const rows=[{id:1,job_name:'user-job',status:'running',error_count:'not-a-count',transactional_state:state},{id:2,job_name:'user-job',status:'completed',error_count:0,transactional_state:state}];
+ const a=render(rows);assert.match(a,/batcheman_job_visited\{job_id="2"/);assert.doesNotMatch(a,/job_id="1"|not-a-count/);
+});
 test('HTTP serves real exposition and fails closed on unavailable database',async()=>{
  let fail=false;const s=createServer(async()=>{if(fail)throw Error('password-sensitive');return []});await new Promise(r=>s.listen(0,'127.0.0.1',r));
  try{const url=`http://127.0.0.1:${s.address().port}`;let r=await fetch(url+'/metrics');assert.equal(r.status,200);assert.match(await r.text(),/tcc_collector_read_success 1/);fail=true;r=await fetch(url+'/metrics');const text=await r.text();assert.match(text,/tcc_collector_read_success 0/);assert.doesNotMatch(text,/sensitive|tcc_committed/);}finally{await new Promise(r=>s.close(r));}

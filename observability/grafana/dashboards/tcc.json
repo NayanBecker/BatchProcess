@@ -1,114 +1,161 @@
 {
   "uid": "tcc-phase-d",
-  "title": "TCC — Fase D: committed + PostgreSQL + Linux VM",
+  "title": "BatCheman — Banco e jobs",
+  "description": "Visão operacional read-only. Até 200 registros consultados e 20 jobs individuais exportados; não é todo histórico. Ausência de série é Sem dados, não zero.",
   "schemaVersion": 39,
-  "version": 1,
-  "refresh": "5s",
+  "version": 2,
+  "refresh": "30s",
   "timezone": "browser",
   "time": {
-    "from": "now-15m",
+    "from": "now-1h",
     "to": "now"
   },
   "tags": [
-    "TCC",
-    "Fase-D-parcial"
+    "BatCheman",
+    "Operacional"
   ],
   "panels": [
     {
       "id": 1,
-      "title": "Scrapes / disponibilidade do coletor (não SLA da aplicação)",
-      "type": "timeseries",
+      "title": "Banco disponível",
+      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 12,
-        "h": 8
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "up",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "pg_up{job=\"postgres\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "PostgreSQL"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "noValue": "Sem dados"
+          "noValue": "Sem dados",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Indisponível",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "colorMode": "value",
+        "graphMode": "none"
       }
     },
     {
       "id": 2,
-      "title": "Leitura committed disponível",
-      "type": "timeseries",
+      "title": "Leitura dos jobs",
+      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
-        "x": 12,
+        "x": 6,
         "y": 0,
-        "w": 12,
-        "h": 8
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
           "refId": "A",
           "expr": "tcc_collector_read_success",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "instant": true,
+          "range": false,
+          "legendFormat": "PostgreSQL"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "noValue": "Sem dados"
+          "noValue": "Sem dados",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Indisponível",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "colorMode": "value",
+        "graphMode": "none"
       }
     },
     {
       "id": 3,
-      "title": "Jobs duráveis por estado",
-      "type": "timeseries",
+      "title": "Conexões no banco",
+      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
-        "x": 0,
-        "y": 8,
-        "w": 12,
-        "h": 8
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "tcc_jobs",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "pg_stat_database_numbackends{datname=\"backup_testes\"}",
+          "instant": true,
+          "range": false,
+          "legendFormat": "PostgreSQL"
         }
       ],
       "fieldConfig": {
@@ -119,34 +166,40 @@
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "colorMode": "value",
+        "graphMode": "none"
       }
     },
     {
       "id": 4,
-      "title": "Progresso committed: registros visitados retidos",
-      "type": "timeseries",
+      "title": "Locks no banco (não duração de espera)",
+      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
-        "x": 12,
-        "y": 8,
-        "w": 12,
-        "h": 8
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "tcc_committed_visited",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "sum(pg_locks_count{datname=\"backup_testes\"})",
+          "instant": true,
+          "range": false,
+          "legendFormat": "PostgreSQL"
         }
       ],
       "fieldConfig": {
@@ -157,39 +210,51 @@
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "colorMode": "value",
+        "graphMode": "none"
       }
     },
     {
       "id": 5,
-      "title": "Linhas alteradas / inseridas / excluídas",
+      "title": "Transações do banco / segundo",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 4,
         "w": 12,
-        "h": 8
+        "h": 7
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "{__name__=~\"tcc_committed_(changed|inserted|deleted)\"}",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "rate(pg_stat_database_xact_commit{datname=\"backup_testes\"}[2m])",
+          "instant": false,
+          "range": true,
+          "legendFormat": "Commit"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(pg_stat_database_xact_rollback{datname=\"backup_testes\"}[2m])",
+          "legendFormat": "Rollback",
+          "range": true
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "ops",
           "noValue": "Sem dados"
         },
         "overrides": []
@@ -206,28 +271,32 @@
     },
     {
       "id": 6,
-      "title": "Commits retidos (gauge; não usar rate)",
+      "title": "CPU PostgreSQL",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
         "x": 12,
-        "y": 16,
-        "w": 12,
-        "h": 8
+        "y": 4,
+        "w": 6,
+        "h": 7
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "tcc_committed_commits",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"dbpostgres\",cpu=\"total\"}[2m]))",
+          "instant": false,
+          "range": true,
+          "legendFormat": "PostgreSQL"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "cores",
           "noValue": "Sem dados"
         },
         "overrides": []
@@ -240,32 +309,37 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Somente dbpostgres na VM Linux; não CPU do Windows."
     },
     {
       "id": 7,
-      "title": "Erros duráveis (não tentativas)",
+      "title": "Memória PostgreSQL",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
-        "x": 0,
-        "y": 24,
-        "w": 12,
-        "h": 8
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 7
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "tcc_committed_errors",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "container_memory_working_set_bytes{name=\"dbpostgres\"}",
+          "instant": false,
+          "range": true,
+          "legendFormat": "PostgreSQL"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "bytes",
           "noValue": "Sem dados"
         },
         "overrides": []
@@ -278,857 +352,599 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Working set do container PostgreSQL; não memória total do Windows."
     },
     {
       "id": 8,
-      "title": "Timing ativo persistido acumulado / operação",
-      "type": "timeseries",
+      "title": "Jobs — estado e progresso confirmado",
+      "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
+        "type": "grafana-postgresql-datasource",
+        "uid": "batcheman-postgres"
       },
+      "maxDataPoints": 200,
       "gridPos": {
-        "x": 12,
-        "y": 24,
-        "w": 12,
+        "x": 0,
+        "y": 11,
+        "w": 24,
         "h": 8
       },
+      "description": "Uma linha por execução, com os 200 IDs mais recentes em ordem numérica decrescente. Todos os campos na mesma tabela, sem seletor de métricas. Contagens confirmadas no último commit; — indica informação indisponível, não zero. Estado running é persistido, não prova heartbeat. Não depende do período selecionado nos gráficos. Leitura direta do controle existente, sem alterar jobs.",
       "targets": [
         {
           "refId": "A",
-          "expr": "tcc_active_seconds",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT id AS \"ID\", job_name AS \"Job\", status AS \"Estado\",\n transactional_state->>'mode' AS \"Modo\",\n CASE WHEN (transactional_state->>'visited') ~ '^[0-9]+$' THEN (transactional_state->>'visited')::numeric END AS \"Visitados\",\n CASE WHEN (transactional_state->>'changed') ~ '^[0-9]+$' THEN (transactional_state->>'changed')::numeric END AS \"Alterados\",\n CASE WHEN (transactional_state->>'commits') ~ '^[0-9]+$' THEN (transactional_state->>'commits')::numeric END AS \"Commits\",\n error_count AS \"Erros\"\nFROM \"batcheman_control\".\"batch_jobs\"\nORDER BY id DESC\nLIMIT 200"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
-          "noValue": "Sem dados"
+          "noValue": "—",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ID"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 65
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Job"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Estado"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 135
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "pending": {
+                        "text": "Pendente",
+                        "color": "blue"
+                      },
+                      "running": {
+                        "text": "Em execução",
+                        "color": "yellow"
+                      },
+                      "paused": {
+                        "text": "Pausado",
+                        "color": "orange"
+                      },
+                      "completed": {
+                        "text": "Concluído",
+                        "color": "green"
+                      },
+                      "failed": {
+                        "text": "Falhou",
+                        "color": "red"
+                      },
+                      "cancelled": {
+                        "text": "Cancelado",
+                        "color": "gray"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Modo"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 115
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "A": {
+                        "text": "Monolítico"
+                      },
+                      "B": {
+                        "text": "Lotes"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Visitados"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 135
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alterados"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 135
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Commits"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 135
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 135
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "showHeader": true,
+        "cellHeight": "sm",
+        "enablePagination": false,
+        "footer": {
+          "show": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "sortBy": [
+          {
+            "displayName": "ID",
+            "desc": true
+          }
+        ]
       }
     },
     {
       "id": 9,
-      "title": "Pausa persistida acumulada / operação",
-      "type": "timeseries",
+      "title": "Registros visitados — por job",
+      "type": "barchart",
       "datasource": {
         "type": "prometheus",
         "uid": "tcc-prometheus"
       },
+      "maxDataPoints": 600,
+      "interval": "15s",
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 19,
         "w": 12,
-        "h": 8
+        "h": 7
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "tcc_paused_seconds",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
+          "expr": "label_join(batcheman_job_visited, \"execucao\", \" #\", \"job_name\", \"job_id\")",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Job",
+        "showValue": "always",
+        "groupWidth": 0.75,
+        "barWidth": 0.8,
+        "stacking": "none",
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "description": "Uma barra por execução com o total visitado no último commit. Rótulo = nome e ID do job. Consulta instantânea, sem somar amostras ao longo do tempo; pode permanecer estável enquanto um lote está executando. Até 20 jobs exportados pelo coletor.",
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "job_id": true,
+              "job_name": true,
+              "status": true,
+              "mode": true
+            },
+            "indexByName": {
+              "execucao": 0,
+              "batcheman_job_visited": 1,
+              "Value": 1
+            },
+            "renameByName": {
+              "execucao": "Job",
+              "batcheman_job_visited": "Visitados",
+              "Value": "Visitados"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Execução dos jobs — início e fim",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "batcheman-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 7
+      },
+      "maxDataPoints": 600,
+      "timeFrom": "7d",
+      "description": "Uma linha por ID do job, nos últimos 7 dias de visualização. Eixo horizontal: data/hora; eixo vertical: tempo decorrido desde o início. O ponto inicial vale zero em started_at; o ponto final usa completed_at e a duração entre as datas. A legenda mostra a duração, e o tooltip informa o horário do ponto. Entre os dois extremos a linha representa tempo decorrido, não amostras de CPU ou progresso. Inclui pausas e throttle. Jobs running vão até a consulta atual, sem inventar finalização; pendentes não têm linha. Até 20 execuções, em execução primeiro e depois IDs recentes. Fuso do dashboard; estados antigos abandonados podem ter intervalo longo, que não prova SQL ativo durante todo esse tempo.",
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "WITH selected AS MATERIALIZED (\n SELECT id, job_name, status, started_at, completed_at\n FROM \"batcheman_control\".\"batch_jobs\"\n WHERE started_at IS NOT NULL\n   AND (completed_at IS NOT NULL OR status = 'running')\n ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END, id DESC\n LIMIT 20\n), runs AS (\n SELECT *, CASE WHEN completed_at IS NOT NULL THEN completed_at\n                WHEN status = 'running' THEN statement_timestamp() END AS finished_at\n FROM selected\n)\nSELECT points.time AS \"time\", points.elapsed AS \"Tempo decorrido\",\n 'Job #' || j.id || ' — ' || j.job_name || ' (' || j.status || ')' AS metric\nFROM runs j\nCROSS JOIN LATERAL (VALUES\n (j.started_at, 0.0::double precision),\n (j.finished_at, extract(epoch FROM j.finished_at - j.started_at)::double precision)\n) points(time, elapsed)\nWHERE j.finished_at >= j.started_at\nORDER BY points.time, metric"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "noValue": "Sem dados"
+          "decimals": 1,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "axisLabel": "Tempo decorrido desde o início",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 10,
-      "title": "Timing com intervalo desconhecido",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 32,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_timing_uncertain_jobs",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
+          "mode": "single",
+          "sort": "none"
         }
       }
     },
     {
       "id": 11,
-      "title": "CPU containers: cores usados, Linux VM",
-      "type": "timeseries",
+      "title": "Top 10 consultas — mais recentes primeiro",
+      "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
+        "type": "grafana-postgresql-datasource",
+        "uid": "batcheman-postgres"
       },
+      "maxDataPoints": 10,
       "gridPos": {
         "x": 0,
-        "y": 40,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(container_cpu_usage_seconds_total{name!=\"\"}[1m])",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 12,
-      "title": "Memória working set containers, Linux VM",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 40,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "container_memory_working_set_bytes{name!=\"\"}",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 13,
-      "title": "I/O containers: setores escritos/s (não bytes)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 48,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(container_fs_sector_writes_total{name!=\"\"}[1m])",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 14,
-      "title": "PostgreSQL conexão exporter",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 48,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "pg_up",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 15,
-      "title": "Sessões PostgreSQL / banco",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 56,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "pg_stat_database_numbackends",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 16,
-      "title": "Sessões esperando lock (ausência de série = sem dados)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 56,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (datname) (pg_stat_activity_count{wait_event_type=\"Lock\"})",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 17,
-      "title": "Locks PostgreSQL por modo (não duração de espera)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 64,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "pg_locks_count",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 18,
-      "title": "Deadlocks PostgreSQL/s",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 64,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(pg_stat_database_deadlocks[1m])",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 19,
-      "title": "Transações PostgreSQL commit/s",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 72,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(pg_stat_database_xact_commit[1m])",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 20,
-      "title": "Tuplas mortas estimadas (não contagem exata)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 72,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "pg_stat_user_tables_n_dead_tup",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 21,
-      "title": "Autovacuum/s",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 80,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(pg_stat_user_tables_autovacuum_count[1m])",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 22,
-      "title": "CPU do collector Node (não CLI de trabalho)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 80,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_collector_process_cpu_seconds",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 23,
-      "title": "Lotes instrumentados retidos (cobertura, não todo histórico)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 88,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_batch_retained_samples",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 24,
-      "title": "Trabalho committed acumulado antes checkpoint/commit",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 88,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_batch_retained_work_seconds",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 25,
-      "title": "Média trabalho committed (não p95 nem SQL puro)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 96,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(tcc_batch_retained_work_seconds) / sum(tcc_batch_retained_samples)",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 26,
-      "title": "Admissões / falhas / não resolvidas retidas",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 96,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{__name__=~\"tcc_batch_retained_(attempts|failures|unresolved)\"}",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 27,
-      "title": "CPU CLI nos intervalos committed (não PostgreSQL)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 104,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_batch_retained_cpu_seconds",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 28,
-      "title": "Maior amostra RSS CLI nas fronteiras (não pico exato)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 104,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_batch_retained_rss_sample_max_bytes",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 29,
-      "title": "RSS do collector Node (não CLI de trabalho)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "tcc-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 112,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "tcc_collector_process_resident_memory_bytes",
-          "legendFormat": "{{__name__}} {{operation}} {{mode}} {{status}} {{name}} {{datname}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "noValue": "Sem dados"
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 100,
-      "title": "Limites / gates ainda abertos",
-      "type": "text",
-      "gridPos": {
-        "x": 0,
-        "y": 120,
+        "y": 26,
         "w": 24,
-        "h": 7
+        "h": 10
+      },
+      "description": "Snapshot atual a cada 30s; consultas curtas podem não aparecer. Até 10 sessões do banco conectado por início da consulta, mais recentes primeiro; não é histórico de consultas concluídas. Idle normal e monitoramento ficam ocultos. Execução somente para active; transação aberta é idade separada. Espera lock usa pg_locks.waitstart (nulo se indisponível), nunca a idade da consulta; IO não é lock. Locks concedidos não significam bloqueio. Tabela vazia sem erro = nenhuma sessão elegível. SQL truncado, NÃO anonimizado: pode conter dados sensíveis; acesso apenas a usuários locais autorizados. SQL não vai ao Prometheus. A conta existente do datasource não tem privilégios read-only impostos pelo painel.",
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "WITH selected AS MATERIALIZED (\n SELECT pid, application_name, state, query, query_start, xact_start,\n        wait_event_type, wait_event\n FROM pg_catalog.pg_stat_activity\n WHERE datname = current_database()\n   AND pid <> pg_backend_pid()\n   AND application_name <> 'tcc_observability_readonly'\n   AND application_name NOT ILIKE 'grafana%'\n   AND state IN ('active', 'idle in transaction', 'idle in transaction (aborted)')\n ORDER BY query_start DESC NULLS LAST, pid\n LIMIT 10\n)\nSELECT s.query_start AS \"Início da consulta\", s.pid AS \"PID\", s.application_name AS \"Aplicação\",\n CASE WHEN s.wait_event_type = 'Lock' THEN 'Aguardando lock'\n      WHEN s.state = 'active' THEN 'Ativa'\n      WHEN s.state = 'idle in transaction (aborted)' THEN 'Transação ociosa (abortada)'\n      ELSE 'Transação ociosa' END AS \"Estado\",\n CASE WHEN s.state = 'active' THEN\n      extract(epoch FROM statement_timestamp() - s.query_start)::double precision END AS \"Execução consulta (s)\",\n extract(epoch FROM statement_timestamp() - s.xact_start)::double precision AS \"Transação aberta (s)\",\n CASE WHEN s.wait_event_type = 'Lock' THEN\n      extract(epoch FROM statement_timestamp() - locks.wait_start)::double precision END AS \"Espera lock (s)\",\n s.wait_event_type AS \"Tipo espera\", s.wait_event AS \"Evento espera\",\n cardinality(blockers.pids) AS \"Quantidade bloqueadores\",\n array_to_string(blockers.pids, ', ') AS \"PIDs bloqueadores\",\n left(s.query, 500) AS \"SQL atual / última na transação (500 caracteres)\"\nFROM selected s\nCROSS JOIN LATERAL (SELECT pg_catalog.pg_blocking_pids(s.pid) AS pids) blockers\nLEFT JOIN LATERAL (\n SELECT min(l.waitstart) AS wait_start FROM pg_catalog.pg_locks l\n WHERE l.pid = s.pid AND NOT l.granted\n) locks ON true\nORDER BY s.query_start DESC NULLS LAST, s.pid"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Início da consulta"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Execução consulta (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Transação aberta (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Espera lock (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SQL atual / última na transação (500 caracteres)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 600
+              },
+              {
+                "id": "custom.wrapText",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Estado"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 210
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Aguardando lock": {
+                        "text": "Aguardando lock",
+                        "color": "red"
+                      },
+                      "Transação ociosa": {
+                        "text": "Transação ociosa",
+                        "color": "orange"
+                      },
+                      "Transação ociosa (abortada)": {
+                        "text": "Transação ociosa (abortada)",
+                        "color": "orange"
+                      },
+                      "Ativa": {
+                        "text": "Ativa",
+                        "color": "green"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "mode": "markdown",
-        "content": "Instrumentação D v1 exercitada em fixture: diário committed atômico e somas duráveis; duração monotônica de trabalho inclui fronteiras/locks/DML e exclui checkpoint/COMMIT. Confirmação completa é log auxiliar best effort. Histórico antigo de backup não possui amostras: SEM DADOS, nunca backfill/zero inventado. CPU CLI é processo inteiro nos intervalos committed; RSS máximo de amostras de fronteira, não pico exato. Admissões não resolvidas não são falhas/retries. Falhas de conexão podem impedir registro final. p95/p99 da carga e disponibilidade continuam Fase E. cAdvisor mede VM Linux, não Windows. Gauges retidos não usam rate; exclusão do histórico reduz valores. Sem percentual cursor/H."
+        "showHeader": true,
+        "cellHeight": "md",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Início da consulta",
+            "desc": true
+          }
+        ]
       }
     }
   ]

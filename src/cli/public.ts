@@ -1,6 +1,6 @@
 import knex from 'knex';
 import path from 'path';
-import {readRuntimeConfig,assertRuntimeControl,ConfigurationError,isSqlEntry} from '../core/runtimeConfig';
+import {readRuntimeConfig,readRuntimePassword,assertRuntimeControl,ConfigurationError,isSqlEntry} from '../core/runtimeConfig';
 import {readSqlDefinition,SqlDefinition} from '../core/sqlDefinition';
 import {SqlJob} from '../core/SqlJob';
 import {guardTransactionalConnection,assertDurableTarget,validatePersistenceContext} from '../core/TransactionalOwnership';
@@ -55,8 +55,7 @@ export async function publicCommand(command:string,subject:string|undefined,opti
   }else{const Job=load(subject!);job=new Job(config);}
   await job.validate();
  }
- const c=runtime.connection;const password=process.env[c.passwordEnv];
- if(!password) throw new ConfigurationError('Variável passwordEnv ausente');
+ const c=runtime.connection;const password=readRuntimePassword(runtime,options['--config']);
  const db=knex({client:'pg',connection:{host:c.host,port:c.port,database:c.database,user:c.user,password},pool:{min:0,max:4}});
  const context:PersistenceContext={db,schema:runtime.target.controlSchema,dataSchema:runtime.target.dataSchema,runtime};
  try {

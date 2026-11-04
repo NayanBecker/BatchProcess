@@ -5,6 +5,7 @@
   "license": "ISC",
   "author": "nayanbecker",
   "private": true,
+  "bin": { "bah": "dist/cli/index.js" },
   "engines": { "node": ">=22.22.2" },
   "scripts": {
     "test": "node --test --test-concurrency=1 tests/unit/*.test.cjs",
