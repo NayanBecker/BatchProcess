@@ -1,0 +1,14 @@
+**
+!package.json
+!package-lock.json
+!dist/
+!dist/core/
+!dist/core/runtimeConfig.js
+!dist/core/identifiers.js
+!observability/
+!observability/Dockerfile.collector
+!observability/Dockerfile.collector.dockerignore
+!observability/collector.cjs
+!observability/start-collector.cjs
+!observability/collector-runtime.cjs
+!observability/collector.config.json

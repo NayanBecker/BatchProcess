@@ -1,0 +1,69 @@
+name: tcc-observability
+services:
+  collector:
+    image: tcc-observability-collector:local
+    build:
+      context: ..
+      dockerfile: observability/Dockerfile.collector
+    restart: unless-stopped
+    init: true
+    read_only: true
+    ports: ['127.0.0.1:9464:9464']
+    environment:
+      BATCHEMAN_COLLECTOR_CONTAINER: '1'
+    command: ['node','observability/start-collector.cjs','/run/batcheman/batcheman.config.local.json']
+    volumes: ['../batcheman.config.local.json:/run/batcheman/batcheman.config.local.json:ro','../.env:/run/batcheman/.env:ro']
+    healthcheck:
+      test: ['CMD','node','-e','fetch("http://127.0.0.1:9464/health",{signal:AbortSignal.timeout(5000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 15s
+      timeout: 6s
+      start_period: 10s
+      retries: 3
+    mem_limit: 128m
+    cpus: 0.25
+  prometheus:
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    restart: unless-stopped
+    ports: ['127.0.0.1:9090:9090']
+    command: ['--config.file=/etc/prometheus/prometheus.yml','--storage.tsdb.retention.time=7d','--storage.tsdb.retention.size=1GB']
+    volumes: ['./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro','prometheus-data:/prometheus']
+    mem_limit: 384m
+    cpus: 0.5
+  grafana:
+    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    restart: unless-stopped
+    ports: ['127.0.0.1:3000:3000']
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${TCC_GRAFANA_PASSWORD:?runtime password required}
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+    volumes: ['./grafana/provisioning:/etc/grafana/provisioning:ro','./grafana/dashboards:/var/lib/grafana/dashboards:ro','grafana-data:/var/lib/grafana']
+    mem_limit: 384m
+    cpus: 0.5
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e
+    restart: unless-stopped
+    ports: ['127.0.0.1:9187:9187']
+    environment:
+      DATA_SOURCE_URI: host.docker.internal:5432/backup_testes?sslmode=disable
+      DATA_SOURCE_USER: postgres
+      DATA_SOURCE_PASS: ${TCC_MONITOR_PASSWORD:?runtime password required}
+      PG_EXPORTER_DISABLE_DEFAULT_METRICS: 'false'
+      PG_EXPORTER_EXCLUDE_DATABASES: postgres,template0,template1,tcc_framework_test
+      PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=3000'
+    mem_limit: 96m
+    cpus: 0.25
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.60.6@sha256:b8e7d1093144fd088f425ff003d75a4aa405de075db78dae3bc563730b1bd07a
+    restart: unless-stopped
+    ports: ['127.0.0.1:9080:8080']
+    command: ['--docker_only=true','--housekeeping_interval=5s','--store_container_labels=false','--disable_metrics=percpu,sched,tcp,udp,hugetlb,referenced_memory,resctrl']
+    volumes: ['/:/rootfs:ro','/sys:/sys:ro','/var/lib/docker:/var/lib/docker:ro','/var/run:/var/run:ro']
+    mem_limit: 192m
+    cpus: 0.5
+volumes:
+  prometheus-data:
+  grafana-data:

@@ -1,14 +1,21 @@
 {
-  "name": "processamento_em_lote",
+  "name": "batcheman",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema de processamento em lote via CLI",
   "license": "ISC",
-  "author": "nyn",
-  "type": "commonjs",
-  "main": "index.js",
+  "author": "nayanbecker",
+  "private": true,
+  "bin": { "bah": "dist/cli/index.js" },
+  "engines": { "node": ">=22.22.2" },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node src/cli/index.ts"
+    "test": "node --test --test-concurrency=1 tests/unit/*.test.cjs",
+    "test:integration": "node -r ts-node/register --test --test-concurrency=1 tests/integration/*.test.cjs",
+    "dev": "ts-node src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc",
+    "db:check": "ts-node src/db/migrate.ts check",
+    "migrate": "ts-node src/db/migrate.ts latest",
+    "migrate:rollback": "ts-node src/db/migrate.ts rollback"
   },
   "dependencies": {
     "knex": "^3.1.0",

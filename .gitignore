@@ -1,2 +1,12 @@
-node_modules
+node_modules/
+jobs/*
+dist/
 .env
+.env.*
+!.env.example
+coverage/
+experiments/results/
+batcheman.config.local.json
+batcheman.config.*.local.json
+research/private/
+config/backup_testes.json

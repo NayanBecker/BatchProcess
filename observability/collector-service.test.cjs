@@ -1,0 +1,28 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const source=f=>fs.readFileSync(path.join(__dirname,f),'utf8');
+test('collector is a durable isolated loopback-only Compose service with runtime secrets mounted read-only',()=>{
+ const compose=source('compose.yaml');
+ const block=compose.match(/^  collector:\n([\s\S]*?)(?=^  [\w-]+:|^volumes:)/m)?.[1];
+ assert.ok(block,'missing durable collector service');
+ assert.match(block,/restart: unless-stopped/);
+ assert.match(block,/127\.0\.0\.1:9464:9464/);
+ assert.match(block,/read_only: true/);
+ assert.match(block,/BATCHEMAN_COLLECTOR_CONTAINER: '1'/);
+ assert.match(block,/batcheman\.config\.local\.json:ro/);
+ assert.match(block,/\/run\/batcheman\/\.env:ro/);
+ assert.match(block,/healthcheck:/);
+ assert.doesNotMatch(block,/PASSWORD|privileged|docker\.sock/);
+ const dockerfile=source('Dockerfile.collector');
+ assert.match(dockerfile,/FROM node:22\.22\.2-slim/);
+ assert.match(dockerfile,/npm ci --omit=dev --ignore-scripts/);
+ assert.match(dockerfile,/USER node/);
+ assert.doesNotMatch(dockerfile,/COPY\s+\.\s|COPY[^\n]*(?:\.env|local\/|config\.local)/);
+ const ignore=source('Dockerfile.collector.dockerignore');
+ assert.ok(ignore.startsWith('**\n'));
+ assert.doesNotMatch(ignore,/!.*(?:\.env|config\.local|local\/)/);
+ assert.match(source('run.cjs'),/\['up','-d','--no-deps','--build','collector'\]/);
+});

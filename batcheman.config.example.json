@@ -1,0 +1,26 @@
+{
+  "connection": {
+    "host": "127.0.0.1",
+    "port": 5432,
+    "database": "backup_testes",
+    "user": "postgres",
+    "passwordEnv": "DB_PASSWORD"
+  },
+  "target": {
+    "database": "backup_testes",
+    "dataSchema": "public",
+    "controlSchema": "batcheman_control"
+  },
+  "jobs": {
+    "normalize-label": {
+      "sqlFile": "./jobs/normalize-label.sql",
+      "table": "demo_items",
+      "operation": "UPDATE"
+    },
+    "converter-cnpj": {
+      "sqlFile": "./jobs/converter-cnpj.sql",
+      "table": "teste_cnpj",
+      "operation": "UPDATE"
+    }
+  }
+}
