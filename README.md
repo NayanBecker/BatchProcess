@@ -76,7 +76,7 @@ Esperado no exemplo: `completed`, `visited: "6"`, `changed: "5"`, `commits: "3"`
 Para uma **nova execução monolítica**, use outro cadastro:
 
 ```bash
-bah register normalize-label --mode monolithic
+bah register normalize-label --mode monolithic --batch-size "(default 1000)"  --throttle
 bah run ID
 ```
 
